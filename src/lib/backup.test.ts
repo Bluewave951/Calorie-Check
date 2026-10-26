@@ -31,7 +31,7 @@ const settings = { dailyGoal: 1800, model: "nvidia/nemotron-3.5-super-vl:free" }
 
 describe("ไฟล์สำรอง", () => {
   it("ส่งออกแล้วนำเข้าได้ข้อมูลเหมือนเดิม", () => {
-    const backup = buildBackup([scan(), scan({ id: "s2", date: "2026-10-20", meal: "dinner" })], settings, new Date("2026-10-26T10:00:00Z"));
+    const backup = buildBackup([scan(), scan({ id: "s2", date: "2026-10-20", meal: "dinner" })], settings, [], new Date("2026-10-26T10:00:00Z"));
     const restored = parseBackup(JSON.stringify(backup));
     expect(restored).toEqual(backup);
     expect(restored.exportedAt).toBe("2026-10-26T10:00:00.000Z");
@@ -44,6 +44,15 @@ describe("ไฟล์สำรอง", () => {
     expect(parseBackup(JSON.stringify(buildBackup([], settings))).settings.profile).toBeUndefined();
     const broken = { ...withProfile, settings: { ...settings, profile: { ...profile, activity: "couch" } } };
     expect(() => parseBackup(JSON.stringify(broken))).toThrow(BackupError);
+  });
+
+  it("เก็บบันทึกน้ำหนักไว้ในไฟล์สำรอง และไฟล์เก่าที่ไม่มีได้รายการว่าง", () => {
+    const weights = [{ date: "2026-10-20", weightKg: 70.4 }];
+    expect(parseBackup(JSON.stringify(buildBackup([], settings, weights))).weights).toEqual(weights);
+    const { weights: _w, ...old } = buildBackup([], settings);
+    expect(parseBackup(JSON.stringify(old)).weights).toEqual([]);
+    const bad = { ...buildBackup([], settings), weights: [{ date: "2026-10-20", weightKg: 5 }] };
+    expect(() => parseBackup(JSON.stringify(bad))).toThrow(BackupError);
   });
 
   it("ข้อมูลเก่าที่ไม่มีช่องเครื่องดื่มและรูปย่อยังนำเข้าได้", () => {

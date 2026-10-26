@@ -103,6 +103,13 @@ export interface BodyProfile {
   weightGoal: WeightGoal;
 }
 
+/** น้ำหนักตัวที่ชั่งในวันหนึ่ง (วันละค่าเดียว ชั่งซ้ำ = แทนค่าเดิม) */
+export interface WeightEntry {
+  /** วันที่ตามเวลาท้องถิ่น YYYY-MM-DD */
+  date: string;
+  weightKg: number;
+}
+
 export interface Settings {
   dailyGoal: number;
   /** ว่าง = ใช้โมเดลเริ่มต้นของเซิร์ฟเวอร์ */

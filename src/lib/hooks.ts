@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { DATA_CHANGED_EVENT, getDailyTotals, getScansByDate, getScansInRange, getSettings } from "./db";
+import { DATA_CHANGED_EVENT, getDailyTotals, getScansByDate, getScansInRange, getSettings, getWeights } from "./db";
 import { addDays, dateKey, parseDateKey } from "./nutrition";
 import { frequentFoods, type FrequentFood } from "./recents";
 import type { DailyTotals } from "./stats";
-import type { Scan, Settings } from "./types";
+import type { Scan, Settings, WeightEntry } from "./types";
 
 /** โหลดข้อมูลจาก IndexedDB และโหลดใหม่เมื่อมีการบันทึก/ลบ */
 function useDbQuery<T>(query: () => Promise<T>): T | undefined {
@@ -31,6 +31,10 @@ function useDbQuery<T>(query: () => Promise<T>): T | undefined {
 
 export function useSettings(): Settings | undefined {
   return useDbQuery(getSettings);
+}
+
+export function useWeights(): WeightEntry[] | undefined {
+  return useDbQuery(getWeights);
 }
 
 export function useScansByDate(date: string | undefined): Scan[] | undefined {

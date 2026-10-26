@@ -1,7 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { sumItems } from "./nutrition";
 import type { DailyTotals } from "./stats";
-import { DEFAULT_SETTINGS, type Scan, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Scan, type Settings, type WeightEntry } from "./types";
 
 interface CalorieDB extends DBSchema {
   scans: {
@@ -13,16 +13,23 @@ interface CalorieDB extends DBSchema {
     key: string;
     value: Settings;
   };
+  weights: {
+    key: string;
+    value: WeightEntry;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<CalorieDB>> | null = null;
 
 function db() {
-  dbPromise ??= openDB<CalorieDB>("calorie-check", 1, {
-    upgrade(database) {
-      const scans = database.createObjectStore("scans", { keyPath: "id" });
-      scans.createIndex("by-date", "date");
-      database.createObjectStore("settings");
+  dbPromise ??= openDB<CalorieDB>("calorie-check", 2, {
+    upgrade(database, oldVersion) {
+      if (oldVersion < 1) {
+        const scans = database.createObjectStore("scans", { keyPath: "id" });
+        scans.createIndex("by-date", "date");
+        database.createObjectStore("settings");
+      }
+      if (oldVersion < 2) database.createObjectStore("weights", { keyPath: "date" });
     },
   });
   return dbPromise;
@@ -86,6 +93,24 @@ export async function deleteScan(id: string): Promise<void> {
   notifyChanged();
 }
 
+/** น้ำหนักทั้งหมด เรียงจากวันเก่าไปใหม่ (key คือวันที่) */
+export async function getWeights(): Promise<WeightEntry[]> {
+  return (await db()).getAll("weights");
+}
+
+/** บันทึกน้ำหนักของวัน (ชั่งซ้ำวันเดียวกัน = แทนค่าเดิม) */
+export async function putWeight(entry: WeightEntry): Promise<void> {
+  await (await db()).put("weights", entry);
+  await markUnbacked();
+  notifyChanged();
+}
+
+export async function deleteWeight(date: string): Promise<void> {
+  await (await db()).delete("weights", date);
+  await markUnbacked();
+  notifyChanged();
+}
+
 /** ส่งออกไฟล์สำรองแล้ว → ไม่มีข้อมูลค้าง */
 export async function markBackedUp(): Promise<void> {
   const database = await db();
@@ -105,11 +130,12 @@ export async function getAllScans(): Promise<Scan[]> {
 }
 
 /** นำเข้าข้อมูลสำรอง: รวมกับของเดิม (id เดียวกัน = ใช้ของในไฟล์) และใช้การตั้งค่าจากไฟล์ */
-export async function importData(scans: Scan[], settings: Settings): Promise<void> {
+export async function importData(scans: Scan[], settings: Settings, weights: WeightEntry[]): Promise<void> {
   const { unbackedSince } = await getSettings();
-  const tx = (await db()).transaction(["scans", "settings"], "readwrite");
+  const tx = (await db()).transaction(["scans", "settings", "weights"], "readwrite");
   await Promise.all([
     ...scans.map((scan) => tx.objectStore("scans").put(scan)),
+    ...weights.map((entry) => tx.objectStore("weights").put(entry)),
     tx.objectStore("settings").put({ ...settings, unbackedSince, goalConfirmed: true }, SETTINGS_KEY),
     tx.done,
   ]);

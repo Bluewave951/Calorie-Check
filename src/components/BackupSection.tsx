@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download, LoaderCircle, Upload } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { backupFileName, BackupError, buildBackup, parseBackup, summarize, type Backup, type BackupSummary } from "@/lib/backup";
-import { DATA_CHANGED_EVENT, getAllScans, getSettings, importData, markBackedUp } from "@/lib/db";
+import { DATA_CHANGED_EVENT, getAllScans, getSettings, getWeights, importData, markBackedUp } from "@/lib/db";
 import { formatKcal, formatThaiDate } from "@/lib/format";
 import { parseDateKey } from "@/lib/nutrition";
 import { showToast } from "@/lib/toast";
@@ -52,7 +52,7 @@ export function BackupSection() {
   const exportData = async () => {
     setBusy("export");
     try {
-      const backup = buildBackup(await getAllScans(), await getSettings());
+      const backup = buildBackup(await getAllScans(), await getSettings(), await getWeights());
       const file = new File([JSON.stringify(backup)], backupFileName(), { type: "application/json" });
       if ((await deliver(file)) !== "cancelled") {
         await markBackedUp();
@@ -79,7 +79,7 @@ export function BackupSection() {
   const confirmImport = async (backup: Backup) => {
     setBusy("import");
     try {
-      await importData(backup.scans, backup.settings);
+      await importData(backup.scans, backup.settings, backup.weights);
       showToast({ message: `นำเข้าแล้ว ${backup.scans.length} การสแกน` });
     } catch {
       showToast({ message: "นำเข้าไม่สำเร็จ ลองใหม่อีกครั้ง", tone: "error" });

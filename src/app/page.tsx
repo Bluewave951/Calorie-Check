@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { ShieldAlert, Target } from "lucide-react";
 import { CalorieRing } from "@/components/CalorieRing";
 import { DayList } from "@/components/DayList";
+import { WeightCard } from "@/components/WeightCard";
 import { backupReminder } from "@/lib/backup";
 import { formatKcal, formatThaiDate, greeting } from "@/lib/format";
-import { useFrequentFoods, useNow, useScansByDate, useSettings } from "@/lib/hooks";
+import { useFrequentFoods, useNow, useScansByDate, useSettings, useWeights } from "@/lib/hooks";
 import { dateKey, itemFromReference, itemKcal, sumScans } from "@/lib/nutrition";
 
 function Skeleton() {
@@ -27,6 +28,7 @@ export default function HomePage() {
   const settings = useSettings();
   const scans = useScansByDate(today);
   const frequent = useFrequentFoods(today);
+  const weights = useWeights();
 
   if (!now || !today || !settings || !scans) return <Skeleton />;
   const unbackedDays = backupReminder(settings.unbackedSince, now.getTime());
@@ -90,6 +92,8 @@ export default function HomePage() {
       )}
 
       <DayList date={today} scans={scans} />
+
+      {weights && <WeightCard entries={weights} today={today} profile={settings.profile} />}
 
       {scans.length === 0 && (
         <p className="px-2 text-center text-sm text-muted">ยังไม่มีบันทึกวันนี้ · กด “บันทึกอาหาร” ด้านล่างเพื่อเริ่ม</p>

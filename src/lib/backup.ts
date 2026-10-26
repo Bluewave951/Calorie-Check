@@ -9,6 +9,7 @@ import {
   WEIGHT_GOALS,
   type Scan,
   type Settings,
+  type WeightEntry,
 } from "./types";
 
 const BACKUP_APP = "calorie-check";
@@ -59,20 +60,27 @@ const settingsSchema = z.object({
   profile: profileSchema.optional(),
 });
 
+const weightSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  weightKg: between(BODY_LIMITS.weightKg),
+});
+
 const backupSchema = z.object({
   app: z.literal(BACKUP_APP),
   version: z.literal(BACKUP_VERSION),
   exportedAt: z.string(),
   settings: settingsSchema,
   scans: z.array(scanSchema),
+  /** ไฟล์ก่อนมีบันทึกน้ำหนัก = ไม่มีช่องนี้ */
+  weights: z.array(weightSchema).default([]),
 });
 
 export type Backup = z.infer<typeof backupSchema>;
 
 export class BackupError extends Error {}
 
-export function buildBackup(scans: Scan[], settings: Settings, now = new Date()): Backup {
-  return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: now.toISOString(), settings, scans };
+export function buildBackup(scans: Scan[], settings: Settings, weights: WeightEntry[] = [], now = new Date()): Backup {
+  return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: now.toISOString(), settings, scans, weights };
 }
 
 export function backupFileName(now = new Date()): string {
