@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/*
+ * ระบบสี: พื้นเทาอุ่น (stone) + สีส้มเข้มของแบรนด์เป็นสีเดียวที่เด่น
+ * ตรวจ contrast แล้ว: ข้อความหลัก/รอง ≥ 7:1, ปุ่มหลัก 5.2:1 (สว่าง) / 7.7:1 (มืด)
+ * กราฟ: --chart-base กับ --over ผ่าน dataviz validator (ΔE 20.6 สว่าง, 32.8 มืด)
+ */
+:root {
+  --bg: #fafaf9;
+  --surface: #ffffff;
+  --surface-2: #f5f5f4;
+  --text: #1c1917;
+  --muted: #57534e;
+  --border: #e7e5e4;
+  --primary: #c2410c;
+  --primary-soft: #fff1e8;
+  --on-primary: #ffffff;
+  --ring: #f97316;
+  --track: #f1ede9;
+  --over: #e2574c;
+  --over-text: #b8332a;
+  --chart-base: #b5afaa;
+  --warn: #f5b83d;
+  --warn-text: #8a5a00;
+  --warn-bg: #fff6df;
+  --ok: #2f7a3e;
+  --scrim: rgb(12 10 9 / 0.5);
+  /* toast ใช้สีกลับด้านกับพื้น */
+  --toast-bg: #1c1917;
+  --toast-text: #fafaf9;
+  --toast-accent: #fdba74;
+  --toast-ok: #86efac;
+  --toast-error: #fca5a5;
+  --shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 2px 8px rgb(28 25 23 / 0.04);
+  --shadow-lg: 0 8px 24px rgb(28 25 23 / 0.14);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0a09;
+    --surface: #1c1917;
+    --surface-2: #292524;
+    --text: #f5f5f4;
+    --muted: #a8a29e;
+    --border: #44403c;
+    --primary: #fb923c;
+    --primary-soft: #3b2415;
+    --on-primary: #1c1917;
+    --ring: #fb923c;
+    --track: #292524;
+    --over: #ff7a6e;
+    --over-text: #ff8f84;
+    --chart-base: #57534e;
+    --warn: #f7c65c;
+    --warn-text: #f7c65c;
+    --warn-bg: #33290f;
+    --ok: #7bc98a;
+    --scrim: rgb(0 0 0 / 0.65);
+    --toast-bg: #f5f5f4;
+    --toast-text: #1c1917;
+    --toast-accent: #c2410c;
+    --toast-ok: #2f7a3e;
+    --toast-error: #b8332a;
+    --shadow: none;
+    --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-ring: var(--ring);
+  --color-track: var(--track);
+  --color-over: var(--over);
+  --color-over-text: var(--over-text);
+  --color-chart-base: var(--chart-base);
+  --color-warn: var(--warn);
+  --color-warn-text: var(--warn-text);
+  --color-warn-bg: var(--warn-bg);
+  --color-ok: var(--ok);
+  --color-toast-bg: var(--toast-bg);
+  --color-toast-text: var(--toast-text);
+  --color-toast-accent: var(--toast-accent);
+  --color-toast-ok: var(--toast-ok);
+  --color-toast-error: var(--toast-error);
+  --font-sans: var(--font-noto-thai), system-ui, sans-serif;
+  /* ฟอนต์เดียวทั้งแอป: หัวข้อใช้น้ำหนักแทนการเปลี่ยนฟอนต์ */
+  --font-display: var(--font-noto-thai), system-ui, sans-serif;
+  --shadow-card: var(--shadow);
+  --shadow-float: var(--shadow-lg);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* อยู่ใน layer components เพื่อให้ utility ของ Tailwind (เช่น border-warn) ทับได้ */
+@layer components {
+  /* การ์ด: เส้นขอบบาง + เงาอ่อน (โหมดมืดใช้เส้นขอบอย่างเดียว) */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ปุ่มกด: ตอบสนองด้วยสี/ความทึบ ไม่ขยับ layout */
+  .pressable {
+    transition:
+      background-color 150ms ease,
+      opacity 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease;
+  }
+  .pressable:active:not(:disabled) {
+    opacity: 0.72;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+input[type="range"] {
+  accent-color: var(--primary);
+}
+
+dialog::backdrop {
+  background: var(--scrim);
+}
+
+@keyframes scanline {
+  0% { top: 0%; }
+  50% { top: calc(100% - 3px); }
+  100% { top: 0%; }
+}
+.scanline {
+  animation: scanline 2.4s ease-in-out infinite;
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.sheet-in {
+  animation: sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes toast-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.toast-in {
+  animation: toast-in 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
