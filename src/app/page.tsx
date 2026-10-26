@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { ShieldAlert, Target } from "lucide-react";
 import { CalorieRing } from "@/components/CalorieRing";
 import { DayList } from "@/components/DayList";
+import { MacroBars } from "@/components/MacroBars";
 import { WeightCard } from "@/components/WeightCard";
 import { backupReminder } from "@/lib/backup";
 import { formatKcal, formatThaiDate, greeting } from "@/lib/format";
 import { useFrequentFoods, useNow, useScansByDate, useSettings, useWeights } from "@/lib/hooks";
-import { dateKey, itemFromReference, itemKcal, sumScans } from "@/lib/nutrition";
+import { dateKey, itemFromReference, itemKcal, sumMacros, sumScans } from "@/lib/nutrition";
+import { macroTargets } from "@/lib/tdee";
 
 function Skeleton() {
   return (
@@ -32,6 +34,7 @@ export default function HomePage() {
 
   if (!now || !today || !settings || !scans) return <Skeleton />;
   const unbackedDays = backupReminder(settings.unbackedSince, now.getTime());
+  const { unknown, ...macros } = sumMacros(scans.flatMap((scan) => scan.items));
 
   return (
     <main className="flex flex-col gap-4">
@@ -67,6 +70,7 @@ export default function HomePage() {
 
       <section aria-label="แคลอรี่วันนี้" className="card p-4">
         <CalorieRing eaten={sumScans(scans)} goal={settings.dailyGoal} />
+        {scans.length > 0 && <MacroBars eaten={macros} target={macroTargets(settings.dailyGoal, settings.profile)} unknown={unknown} />}
       </section>
 
       {frequent && frequent.length > 0 && (

@@ -55,6 +55,12 @@ describe("ไฟล์สำรอง", () => {
     expect(() => parseBackup(JSON.stringify(bad))).toThrow(BackupError);
   });
 
+  it("เก็บสารอาหารหลักของรายการอาหาร", () => {
+    const item = { ...scan().items[0], proteinPer100g: 1.2, carbPer100g: 14.5, fatPer100g: 2.6 };
+    const restored = parseBackup(JSON.stringify(buildBackup([scan({ items: [item] })], settings)));
+    expect(restored.scans[0].items[0]).toMatchObject({ proteinPer100g: 1.2, carbPer100g: 14.5, fatPer100g: 2.6 });
+  });
+
   it("ข้อมูลเก่าที่ไม่มีช่องเครื่องดื่มและรูปย่อยังนำเข้าได้", () => {
     const old = scan({ thumbnail: null });
     const { kind: _k, sugarKcalPer100g: _s, sweetness: _w, ...legacyItem } = old.items[0];

@@ -29,6 +29,10 @@ export interface ReferenceFood {
   name_en: string;
   /** kcal ต่อ 100 กรัม (เครื่องดื่มที่ปรับหวานได้ = ที่ความหวานปกติ) */
   kcalPer100g: number;
+  /** สารอาหารหลัก กรัมต่อ 100 กรัม (ค่าประมาณ; คาร์บรวมน้ำตาลที่ความหวานปกติ) */
+  proteinPer100g: number;
+  carbPer100g: number;
+  fatPer100g: number;
   servingGrams: number;
   aliases: string[];
   /** หน่วยของ 1 ที่เสิร์ฟ เช่น ลูก, สกู๊ป, พู (ไม่ระบุ = จาน หรือ แก้ว) */
@@ -51,6 +55,10 @@ export interface FoodItem {
   servingGrams: number;
   servingUnit?: string;
   kcalPer100g: number;
+  /** ไม่มีค่า = ไม่ทราบ (ค่าประมาณการจาก AI หรือข้อมูลก่อนมีสารอาหาร) */
+  proteinPer100g?: number;
+  carbPer100g?: number;
+  fatPer100g?: number;
   estimated: boolean;
   /** 0–1 ความมั่นใจของ AI (เพิ่มเองหรือแก้แล้ว = 1) */
   confidence: number;

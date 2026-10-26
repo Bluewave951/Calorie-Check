@@ -10,10 +10,12 @@ import {
   guessMeal,
   itemFromAi,
   itemKcal,
+  itemMacros,
   replaceWithReference,
   searchReferences,
   servingUnitOf,
   sumItems,
+  sumMacros,
   withGrams,
   withPortion,
 } from "./nutrition";
@@ -37,6 +39,26 @@ describe("ตารางเมนูอ้างอิง", () => {
     for (const f of REFERENCE_FOODS) {
       expect(f.kcalPer100g).toBeGreaterThanOrEqual(0);
       expect(f.servingGrams).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("สารอาหารหลักในตารางเมนูอ้างอิง", () => {
+  // แอลกอฮอล์ให้ 7 kcal/ก. ซึ่งไม่อยู่ในโปรตีน/คาร์บ/ไขมัน
+  const ALCOHOLIC = new Set(["beer"]);
+
+  it("พลังงานจากโปรตีน×4 + คาร์บ×4 + ไขมัน×9 ใกล้กับ kcal ในตาราง (±15%)", () => {
+    for (const f of REFERENCE_FOODS.filter((f) => !ALCOHOLIC.has(f.key))) {
+      const fromMacros = f.proteinPer100g * 4 + f.carbPer100g * 4 + f.fatPer100g * 9;
+      expect(Math.abs(fromMacros - f.kcalPer100g), `${f.key}: ${fromMacros} vs ${f.kcalPer100g}`).toBeLessThanOrEqual(
+        Math.max(f.kcalPer100g * 0.15, 5),
+      );
+    }
+  });
+
+  it("เครื่องดื่มที่ปรับหวานได้มีคาร์บพอให้หักน้ำตาลออกจนไม่หวาน", () => {
+    for (const f of REFERENCE_FOODS.filter((f) => f.sugarKcalPer100g !== undefined)) {
+      expect(f.carbPer100g * 4, f.key).toBeGreaterThanOrEqual(f.sugarKcalPer100g!);
     }
   });
 });
@@ -194,5 +216,38 @@ describe("guessMeal / dateKey", () => {
   });
   it("dateKey ตามเวลาท้องถิ่น", () => {
     expect(dateKey(at(0, 5))).toBe("2026-10-26");
+  });
+});
+
+describe("สารอาหารหลักของรายการอาหาร", () => {
+  const ref = (key: string) => REFERENCE_FOODS.find((f) => f.key === key)!;
+
+  it("คิดตามกรัมที่กิน", () => {
+    // ข้าวสวย 200 ก.: โปรตีน 2.7, คาร์บ 28.2, ไขมัน 0.3 ต่อ 100 ก.
+    const m = itemMacros(itemFromReference(ref("rice_white"), 200))!;
+    expect(m.protein).toBeCloseTo(5.4);
+    expect(m.carb).toBeCloseTo(56.4);
+    expect(m.fat).toBeCloseTo(0.6);
+  });
+
+  it("ลดความหวานแล้วคาร์บลดตามน้ำตาลที่หักออก (4 kcal ต่อกรัม)", () => {
+    // ชาเย็น 300 มล. คาร์บ 14.5/100 มล., น้ำตาล 45 kcal/100 มล. → ไม่หวาน: 14.5 − 45/4 = 3.25
+    const tea = itemFromReference(ref("thai_tea"), 300);
+    expect(itemMacros(tea)!.carb).toBeCloseTo(43.5);
+    expect(itemMacros(withSweetness(tea, "none"))!.carb).toBeCloseTo(9.75);
+    expect(itemMacros(withSweetness(tea, "none"))!.protein).toBeCloseTo(3.6);
+  });
+
+  it("ค่าประมาณการจาก AI ไม่มีสารอาหาร → ไม่ทราบ", () => {
+    expect(itemMacros(itemFromAi(ai({ name_th: "ชาไทยปั่น", name_en: "", matchKey: null })))).toBeNull();
+  });
+
+  it("รวมทั้งวัน: ปัดเป็นกรัม และนับรายการที่ไม่ทราบค่า", () => {
+    const items = [
+      itemFromReference(ref("rice_white"), 200),
+      itemFromReference(ref("fried_egg"), 50), // 6.8 / 0.4 / 7.65
+      itemFromAi(ai({ name_th: "ชาไทยปั่น", name_en: "", matchKey: null })),
+    ];
+    expect(sumMacros(items)).toEqual({ protein: 12, carb: 57, fat: 8, unknown: 1 });
   });
 });

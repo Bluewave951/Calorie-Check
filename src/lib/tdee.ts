@@ -1,4 +1,5 @@
 import { MAX_GOAL, MIN_GOAL, type ActivityLevel, type BodyProfile, type Sex, type WeightGoal } from "./types";
+import type { Macros } from "./nutrition";
 
 /** ตัวคูณระดับกิจกรรม (Harris-Benedict activity factors) */
 export const ACTIVITY_FACTOR: Record<ActivityLevel, number> = {
@@ -62,4 +63,18 @@ export function goalWarnings(goal: number, profile: BodyProfile | undefined): Go
   if (goal < (profile ? SAFE_MIN_GOAL[profile.sex] : SAFE_MIN_GOAL.female)) warnings.push("below_minimum");
   if (profile?.weightGoal === "lose" && bmi(profile) < UNDERWEIGHT_BMI) warnings.push("underweight_losing");
   return warnings;
+}
+
+/** โปรตีนกรัมต่อน้ำหนักตัว 1 กก. (ลดน้ำหนักต้องการมากขึ้นเพื่อรักษากล้ามเนื้อ) */
+const PROTEIN_PER_KG: Record<WeightGoal, number> = { lose: 1.6, maintain: 1.2, gain: 1.2 };
+const FAT_SHARE = 0.25;
+/** ไม่ทราบน้ำหนักตัว → ใช้สัดส่วนพลังงานแทน */
+const PROTEIN_SHARE = 0.15;
+
+/** เป้าสารอาหารหลักต่อวัน (กรัม): โปรตีนตามน้ำหนักตัว, ไขมัน 25% ของพลังงาน, คาร์บเป็นส่วนที่เหลือ */
+export function macroTargets(goal: number, profile: BodyProfile | undefined): Macros {
+  const protein = Math.round(profile ? profile.weightKg * PROTEIN_PER_KG[profile.weightGoal] : (goal * PROTEIN_SHARE) / 4);
+  const fatKcal = goal * FAT_SHARE;
+  const carb = Math.max(0, (goal - protein * 4 - fatKcal) / 4);
+  return { protein, carb: Math.round(carb), fat: Math.round(fatKcal / 9) };
 }

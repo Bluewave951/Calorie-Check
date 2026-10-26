@@ -60,6 +60,40 @@ export function itemKcal(item: FoodItem): number {
   return computeKcal(item.grams, effectiveKcalPer100g(item));
 }
 
+export interface Macros {
+  protein: number;
+  carb: number;
+  fat: number;
+}
+
+/** กรัมของสารอาหารหลักที่กินจริง (คาร์บหักน้ำตาลตามระดับความหวาน); ไม่มีข้อมูล = null */
+export function itemMacros(item: FoodItem): Macros | null {
+  if (item.proteinPer100g === undefined || item.carbPer100g === undefined || item.fatPer100g === undefined) return null;
+  const removedSugarKcal = item.kcalPer100g - effectiveKcalPer100g(item);
+  const per = item.grams / 100;
+  return {
+    protein: item.proteinPer100g * per,
+    carb: (item.carbPer100g - removedSugarKcal / 4) * per,
+    fat: item.fatPer100g * per,
+  };
+}
+
+/** รวมสารอาหารเป็นกรัมเต็ม และนับรายการที่ไม่ทราบค่า (ไม่ได้รวมในยอด) */
+export function sumMacros(items: FoodItem[]): Macros & { unknown: number } {
+  const total = { protein: 0, carb: 0, fat: 0, unknown: 0 };
+  for (const item of items) {
+    const m = itemMacros(item);
+    if (!m) {
+      total.unknown += 1;
+      continue;
+    }
+    total.protein += m.protein;
+    total.carb += m.carb;
+    total.fat += m.fat;
+  }
+  return { protein: Math.round(total.protein), carb: Math.round(total.carb), fat: Math.round(total.fat), unknown: total.unknown };
+}
+
 export function isDrink(item: Pick<FoodItem, "kind">): boolean {
   return item.kind === "drink";
 }
@@ -95,6 +129,9 @@ function referenceFields(ref: ReferenceFood): Pick<
   | "servingGrams"
   | "servingUnit"
   | "kcalPer100g"
+  | "proteinPer100g"
+  | "carbPer100g"
+  | "fatPer100g"
   | "estimated"
   | "kind"
   | "sugarKcalPer100g"
@@ -107,6 +144,9 @@ function referenceFields(ref: ReferenceFood): Pick<
     servingGrams: ref.servingGrams,
     servingUnit: ref.servingUnit,
     kcalPer100g: ref.kcalPer100g,
+    proteinPer100g: ref.proteinPer100g,
+    carbPer100g: ref.carbPer100g,
+    fatPer100g: ref.fatPer100g,
     estimated: false,
     kind: ref.kind ?? "food",
     sugarKcalPer100g: ref.sugarKcalPer100g,

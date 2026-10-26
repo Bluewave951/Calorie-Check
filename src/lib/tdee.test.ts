@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateTdee, goalWarnings } from "./tdee";
+import { calculateTdee, goalWarnings, macroTargets } from "./tdee";
 import type { BodyProfile } from "./types";
 
 const profile = (over: Partial<BodyProfile> = {}): BodyProfile => ({
@@ -65,5 +65,23 @@ describe("goalWarnings", () => {
     expect(goalWarnings(1800, profile({ weightKg: 50, weightGoal: "maintain" }))).toEqual([]);
     // 57 / 1.75² = 18.6
     expect(goalWarnings(1800, profile({ weightKg: 57, weightGoal: "lose" }))).toEqual([]);
+  });
+});
+
+describe("macroTargets", () => {
+  it("ลดน้ำหนัก: โปรตีน 1.6 ก./กก., ไขมัน 25% ของเป้า, คาร์บเป็นส่วนที่เหลือ", () => {
+    // โปรตีน 60 × 1.6 = 96 ก. · ไขมัน 1,585 × 0.25 / 9 = 44.0 ก. · คาร์บ (1,585 − 384 − 396.25) / 4 = 201.2 ก.
+    const p = profile({ sex: "female", weightKg: 60, weightGoal: "lose" });
+    expect(macroTargets(1585, p)).toEqual({ protein: 96, carb: 201, fat: 44 });
+  });
+
+  it("คงหรือเพิ่มน้ำหนัก: โปรตีน 1.2 ก./กก.", () => {
+    // โปรตีน 84 · ไขมัน 2,000 × 0.25 / 9 = 55.6 · คาร์บ (2,000 − 336 − 500) / 4 = 291
+    expect(macroTargets(2000, profile())).toEqual({ protein: 84, carb: 291, fat: 56 });
+  });
+
+  it("ยังไม่มีข้อมูลร่างกาย: โปรตีน 15% ของเป้า", () => {
+    // โปรตีน 2,000 × 0.15 / 4 = 75 · ไขมัน 55.6 · คาร์บ (2,000 − 300 − 500) / 4 = 300
+    expect(macroTargets(2000, undefined)).toEqual({ protein: 75, carb: 300, fat: 56 });
   });
 });
