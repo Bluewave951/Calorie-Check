@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backupFileName, BackupError, buildBackup, parseBackup, summarize } from "./backup";
+import { backupFileName, BackupError, backupReminder, buildBackup, parseBackup, summarize } from "./backup";
 import type { Scan } from "./types";
 
 const scan = (over: Partial<Scan> = {}): Scan => ({
@@ -80,5 +80,20 @@ describe("ไฟล์สำรอง", () => {
 
   it("ชื่อไฟล์มีวันที่", () => {
     expect(backupFileName(new Date(2026, 9, 5))).toBe("calorie-check-backup-2026-10-05.json");
+  });
+});
+
+describe("เตือนให้สำรองข้อมูล", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = new Date(2026, 9, 26, 12).getTime();
+
+  it("ไม่มีข้อมูลใหม่ตั้งแต่สำรองล่าสุด → ไม่เตือน", () => {
+    expect(backupReminder(undefined, now)).toBeNull();
+  });
+
+  it("มีข้อมูลที่ยังไม่สำรองครบ 14 วัน → เตือนพร้อมจำนวนวัน", () => {
+    expect(backupReminder(now - 13 * DAY, now)).toBeNull();
+    expect(backupReminder(now - 14 * DAY, now)).toBe(14);
+    expect(backupReminder(now - 20.5 * DAY, now)).toBe(20);
   });
 });

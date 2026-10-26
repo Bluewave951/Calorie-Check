@@ -112,3 +112,14 @@ export function summarize(scans: Pick<Scan, "date">[]): BackupSummary {
   const dates = [...new Set(scans.map((s) => s.date))].sort();
   return { scans: scans.length, days: dates.length, from: dates[0] ?? null, to: dates.at(-1) ?? null };
 }
+
+/** เตือนเมื่อมีข้อมูลที่ยังไม่ได้สำรองนานเกินนี้ */
+export const BACKUP_REMINDER_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** จำนวนวันที่มีข้อมูลค้างไม่ได้สำรอง ถ้าถึงเกณฑ์เตือน; ไม่ถึงหรือไม่มีข้อมูลค้าง = null */
+export function backupReminder(unbackedSince: number | undefined, now: number): number | null {
+  if (unbackedSince === undefined) return null;
+  const days = Math.floor((now - unbackedSince) / DAY_MS);
+  return days >= BACKUP_REMINDER_DAYS ? days : null;
+}

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Target } from "lucide-react";
+import { ShieldAlert, Target } from "lucide-react";
 import { CalorieRing } from "@/components/CalorieRing";
 import { DayList } from "@/components/DayList";
+import { backupReminder } from "@/lib/backup";
 import { formatKcal, formatThaiDate, greeting } from "@/lib/format";
 import { useFrequentFoods, useNow, useScansByDate, useSettings } from "@/lib/hooks";
 import { dateKey, itemFromReference, itemKcal, sumScans } from "@/lib/nutrition";
@@ -28,6 +29,7 @@ export default function HomePage() {
   const frequent = useFrequentFoods(today);
 
   if (!now || !today || !settings || !scans) return <Skeleton />;
+  const unbackedDays = backupReminder(settings.unbackedSince, now.getTime());
 
   return (
     <main className="flex flex-col gap-4">
@@ -47,6 +49,17 @@ export default function HomePage() {
             <span className="text-muted">ตอนนี้ใช้ค่าเริ่มต้น {formatKcal(settings.dailyGoal)} kcal ต่อวัน</span>
           </span>
           <span className="text-sm font-medium text-primary">ตั้งค่า</span>
+        </Link>
+      )}
+
+      {unbackedDays !== null && (
+        <Link href="/settings#backup-title" className="pressable card flex items-center gap-3 border-warn/40 bg-warn-bg p-3 hover:opacity-90">
+          <ShieldAlert aria-hidden size={22} className="shrink-0 text-warn-text" />
+          <span className="flex-1 text-sm">
+            <span className="block font-medium">ยังไม่ได้สำรองข้อมูล {unbackedDays} วัน</span>
+            <span className="text-muted">ข้อมูลอยู่ในเครื่องนี้เท่านั้น ส่งออกเก็บไว้กันหาย</span>
+          </span>
+          <span className="text-sm font-medium text-warn-text">สำรอง</span>
         </Link>
       )}
 

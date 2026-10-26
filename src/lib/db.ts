@@ -66,14 +66,38 @@ export async function getScan(id: string): Promise<Scan | undefined> {
   return (await db()).get("scans", id);
 }
 
+/** จำเวลาที่มีข้อมูลค้างไม่ได้สำรองครั้งแรก (ไม่แตะ goalConfirmed) */
+async function markUnbacked(): Promise<void> {
+  const database = await db();
+  const stored = await database.get("settings", SETTINGS_KEY);
+  if (stored?.unbackedSince !== undefined) return;
+  await database.put("settings", { ...DEFAULT_SETTINGS, ...stored, unbackedSince: Date.now() }, SETTINGS_KEY);
+}
+
 export async function putScan(scan: Scan): Promise<void> {
   await (await db()).put("scans", scan);
+  await markUnbacked();
   notifyChanged();
 }
 
 export async function deleteScan(id: string): Promise<void> {
   await (await db()).delete("scans", id);
+  await markUnbacked();
   notifyChanged();
+}
+
+/** ส่งออกไฟล์สำรองแล้ว → ไม่มีข้อมูลค้าง */
+export async function markBackedUp(): Promise<void> {
+  const database = await db();
+  const { unbackedSince: _done, ...rest } = { ...DEFAULT_SETTINGS, ...(await database.get("settings", SETTINGS_KEY)) };
+  await database.put("settings", rest, SETTINGS_KEY);
+  notifyChanged();
+}
+
+/** ขอให้เบราว์เซอร์ไม่ลบข้อมูลเองเมื่อพื้นที่เหลือน้อยหรือไม่ได้เปิดนาน */
+export async function requestPersistentStorage(): Promise<boolean> {
+  if (!navigator.storage?.persist) return false;
+  return (await navigator.storage.persisted()) || navigator.storage.persist();
 }
 
 export async function getAllScans(): Promise<Scan[]> {
@@ -82,10 +106,11 @@ export async function getAllScans(): Promise<Scan[]> {
 
 /** นำเข้าข้อมูลสำรอง: รวมกับของเดิม (id เดียวกัน = ใช้ของในไฟล์) และใช้การตั้งค่าจากไฟล์ */
 export async function importData(scans: Scan[], settings: Settings): Promise<void> {
+  const { unbackedSince } = await getSettings();
   const tx = (await db()).transaction(["scans", "settings"], "readwrite");
   await Promise.all([
     ...scans.map((scan) => tx.objectStore("scans").put(scan)),
-    tx.objectStore("settings").put({ ...settings, goalConfirmed: true }, SETTINGS_KEY),
+    tx.objectStore("settings").put({ ...settings, unbackedSince, goalConfirmed: true }, SETTINGS_KEY),
     tx.done,
   ]);
   notifyChanged();
