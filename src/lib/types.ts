@@ -73,13 +73,49 @@ export interface Scan {
   items: FoodItem[];
 }
 
+export type Sex = "male" | "female";
+
+export const ACTIVITY_LEVELS = ["sedentary", "light", "moderate", "active", "very_active"] as const;
+export type ActivityLevel = (typeof ACTIVITY_LEVELS)[number];
+
+export const SEX_LABEL: Record<Sex, string> = { male: "ชาย", female: "หญิง" };
+
+export const ACTIVITY_LABEL: Record<ActivityLevel, string> = {
+  sedentary: "นั่งทำงาน แทบไม่ออกกำลังกาย",
+  light: "ออกกำลังกายเบา ๆ 1–3 วัน/สัปดาห์",
+  moderate: "ออกกำลังกายปานกลาง 3–5 วัน/สัปดาห์",
+  active: "ออกกำลังกายหนัก 6–7 วัน/สัปดาห์",
+  very_active: "ใช้แรงงานหรือฝึกหนักวันละ 2 ครั้ง",
+};
+
+export const WEIGHT_GOALS = ["lose", "maintain", "gain"] as const;
+export type WeightGoal = (typeof WEIGHT_GOALS)[number];
+
+export const WEIGHT_GOAL_LABEL: Record<WeightGoal, string> = { lose: "ลดน้ำหนัก", maintain: "คงน้ำหนัก", gain: "เพิ่มน้ำหนัก" };
+
+/** ข้อมูลร่างกาย: ใช้คำนวณ TDEE เพื่อแนะนำเป้าแคลอรี่ */
+export interface BodyProfile {
+  sex: Sex;
+  age: number;
+  heightCm: number;
+  weightKg: number;
+  activity: ActivityLevel;
+  weightGoal: WeightGoal;
+}
+
 export interface Settings {
   dailyGoal: number;
   /** ว่าง = ใช้โมเดลเริ่มต้นของเซิร์ฟเวอร์ */
   model: string;
   /** ผู้ใช้ตั้งเป้าเองแล้ว (ไม่ต้องแสดงคำแนะนำให้ตั้งเป้า) */
   goalConfirmed?: boolean;
+  /** ข้อมูลร่างกายที่กรอกในตัวช่วยคำนวณ TDEE (ไม่มี = ยังไม่เคยกรอก) */
+  profile?: BodyProfile;
 }
+
+/** ช่วงเป้าแคลอรี่ที่แอปรองรับ */
+export const MIN_GOAL = 800;
+export const MAX_GOAL = 6000;
 
 export const DEFAULT_SETTINGS: Settings = {
   dailyGoal: 2000,

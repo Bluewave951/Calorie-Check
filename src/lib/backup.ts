@@ -1,5 +1,15 @@
 import { z } from "zod";
-import { MEAL_TYPES, SWEETNESS_LEVELS, type Scan, type Settings } from "./types";
+import { BODY_LIMITS } from "./tdee";
+import {
+  ACTIVITY_LEVELS,
+  MAX_GOAL,
+  MEAL_TYPES,
+  MIN_GOAL,
+  SWEETNESS_LEVELS,
+  WEIGHT_GOALS,
+  type Scan,
+  type Settings,
+} from "./types";
 
 const BACKUP_APP = "calorie-check";
 const BACKUP_VERSION = 1;
@@ -32,9 +42,21 @@ const scanSchema = z.object({
   items: z.array(foodItemSchema),
 });
 
+const between = ([min, max]: readonly [number, number]) => z.number().min(min).max(max);
+
+const profileSchema = z.object({
+  sex: z.enum(["male", "female"]),
+  age: between(BODY_LIMITS.age),
+  heightCm: between(BODY_LIMITS.heightCm),
+  weightKg: between(BODY_LIMITS.weightKg),
+  activity: z.enum(ACTIVITY_LEVELS),
+  weightGoal: z.enum(WEIGHT_GOALS),
+});
+
 const settingsSchema = z.object({
-  dailyGoal: z.number().int().min(800).max(6000),
+  dailyGoal: z.number().int().min(MIN_GOAL).max(MAX_GOAL),
   model: z.string(),
+  profile: profileSchema.optional(),
 });
 
 const backupSchema = z.object({

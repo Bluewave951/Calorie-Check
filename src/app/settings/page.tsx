@@ -3,16 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import { BackupSection } from "@/components/BackupSection";
+import { TdeeCalculator } from "@/components/TdeeCalculator";
 import { saveSettings } from "@/lib/db";
 import { useSettings } from "@/lib/hooks";
 import { formatKcal } from "@/lib/format";
 import { showToast } from "@/lib/toast";
 import type { AiHealth } from "@/lib/aiCore";
-import type { Settings } from "@/lib/types";
+import { MAX_GOAL, MIN_GOAL, type BodyProfile, type Settings } from "@/lib/types";
 
 const GOAL_PRESETS = [1500, 1800, 2000, 2500];
-const MIN_GOAL = 800;
-const MAX_GOAL = 6000;
 
 const PROVIDER_LABEL = { ollama: "Ollama (บนเครื่อง)", openrouter: "OpenRouter (ออนไลน์)" } as const;
 
@@ -29,16 +28,20 @@ function SectionTitle({ id, children, hint }: { id: string; children: React.Reac
 
 function GoalSection({ initial }: { initial: Settings }) {
   const [goalText, setGoalText] = useState(String(initial.dailyGoal));
+  const [profile, setProfile] = useState<BodyProfile | undefined>(initial.profile);
   const goal = Number(goalText);
   const valid = Number.isInteger(goal) && goal >= MIN_GOAL && goal <= MAX_GOAL;
-  const dirty = goal !== initial.dailyGoal || !initial.goalConfirmed;
+  const savedProfileKey = JSON.stringify(initial.profile ?? null);
+  const dirty = goal !== initial.dailyGoal || JSON.stringify(profile ?? null) !== savedProfileKey || !initial.goalConfirmed;
 
   // การตั้งค่าเปลี่ยนจากที่อื่น (เช่น นำเข้าไฟล์สำรอง) → แสดงค่าใหม่
   useEffect(() => setGoalText(String(initial.dailyGoal)), [initial.dailyGoal]);
+  // เทียบข้อมูลร่างกายด้วยค่า เพราะอ่านจากฐานข้อมูลแล้วได้ object ใหม่ทุกครั้ง
+  useEffect(() => setProfile(initial.profile), [savedProfileKey]);
 
   const save = async () => {
     if (!valid) return;
-    await saveSettings({ ...initial, dailyGoal: goal });
+    await saveSettings({ ...initial, dailyGoal: goal, profile });
     showToast({ message: `ตั้งเป้าเป็น ${formatKcal(goal)} kcal ต่อวันแล้ว` });
   };
 
@@ -79,6 +82,14 @@ function GoalSection({ initial }: { initial: Settings }) {
             </button>
           ))}
         </div>
+        <TdeeCalculator
+          key={savedProfileKey}
+          initial={initial.profile}
+          onApply={(suggested, next) => {
+            setGoalText(String(suggested));
+            setProfile(next);
+          }}
+        />
         <button
           type="button"
           onClick={save}

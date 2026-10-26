@@ -37,6 +37,15 @@ describe("ไฟล์สำรอง", () => {
     expect(restored.exportedAt).toBe("2026-10-26T10:00:00.000Z");
   });
 
+  it("เก็บข้อมูลร่างกายสำหรับคำนวณ TDEE ไว้ในไฟล์สำรอง และไฟล์เก่าที่ไม่มีก็ยังนำเข้าได้", () => {
+    const profile = { sex: "female", age: 25, heightCm: 165, weightKg: 60, activity: "moderate", weightGoal: "lose" } as const;
+    const withProfile = buildBackup([], { ...settings, profile });
+    expect(parseBackup(JSON.stringify(withProfile)).settings.profile).toEqual(profile);
+    expect(parseBackup(JSON.stringify(buildBackup([], settings))).settings.profile).toBeUndefined();
+    const broken = { ...withProfile, settings: { ...settings, profile: { ...profile, activity: "couch" } } };
+    expect(() => parseBackup(JSON.stringify(broken))).toThrow(BackupError);
+  });
+
   it("ข้อมูลเก่าที่ไม่มีช่องเครื่องดื่มและรูปย่อยังนำเข้าได้", () => {
     const old = scan({ thumbnail: null });
     const { kind: _k, sugarKcalPer100g: _s, sweetness: _w, ...legacyItem } = old.items[0];
