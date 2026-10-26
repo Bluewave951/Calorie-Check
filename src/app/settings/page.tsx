@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, LoaderCircle, TriangleAlert } from "lucide-react";
 import { BackupSection } from "@/components/BackupSection";
 import { TdeeCalculator } from "@/components/TdeeCalculator";
+import { ThemeSection } from "@/components/ThemeSection";
 import { saveSettings } from "@/lib/db";
 import { useSettings } from "@/lib/hooks";
 import { formatKcal } from "@/lib/format";
@@ -108,7 +109,7 @@ function GoalSection({ initial }: { initial: Settings }) {
           type="button"
           onClick={save}
           disabled={!valid || !dirty}
-          className="pressable mt-4 min-h-12 w-full rounded-xl bg-primary font-semibold text-on-primary hover:opacity-90 disabled:opacity-40"
+          className="pressable mt-4 min-h-12 w-full rounded-xl bg-accent font-semibold text-on-accent hover:opacity-90 disabled:opacity-40"
         >
           {dirty ? "บันทึกเป้า" : "บันทึกแล้ว"}
         </button>
@@ -244,6 +245,7 @@ export default function SettingsPage() {
         </SectionTitle>
         <BackupSection />
       </section>
+      <ThemeSection />
       <AdvancedSection initial={settings} />
       <p className="px-2 text-center text-xs text-muted">ค่าแคลอรี่จากรูปเป็นค่าประมาณ (±20–30%) ไม่ใช่คำแนะนำทางการแพทย์</p>
     </main>

@@ -47,13 +47,13 @@ export function FoodItemCard({ item, onChange, onRename, onDelete }: Props) {
           aria-label={`เปลี่ยนเมนู ${item.name_th}`}
         >
           <span className="flex-1">
-            <span className="block font-display text-lg font-semibold leading-tight">{item.name_th}</span>
+            <span className="block font-heading text-lg font-semibold leading-tight">{item.name_th}</span>
             {item.name_en && <span className="block text-xs text-muted">{item.name_en}</span>}
           </span>
           <Pencil aria-hidden size={16} className="mt-1 shrink-0 text-muted" />
         </button>
         <div className="text-right">
-          <span className="font-display text-xl font-bold tabular-nums">{formatKcal(itemKcal(item))}</span>
+          <span className="font-heading text-xl font-bold tabular-nums">{formatKcal(itemKcal(item))}</span>
           <span className="block text-xs text-muted">kcal</span>
         </div>
       </div>

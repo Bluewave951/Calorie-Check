@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, House, Plus, Settings } from "lucide-react";
+import { CalendarDays, Plus, Settings, Sun } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AddFoodSheet } from "./AddFoodSheet";
 import { onOpenAddSheet, openAddSheet, type AddSheetRequest } from "@/lib/addSheet";
@@ -11,13 +11,14 @@ import { onOpenAddSheet, openAddSheet, type AddSheetRequest } from "@/lib/addShe
 interface Tab {
   href: string;
   label: string;
+  labelEn: string;
   Icon: LucideIcon;
 }
 
 const TABS: Tab[] = [
-  { href: "/", label: "วันนี้", Icon: House },
-  { href: "/history", label: "ประวัติ", Icon: CalendarDays },
-  { href: "/settings", label: "ตั้งค่า", Icon: Settings },
+  { href: "/", label: "วันนี้", labelEn: "Today", Icon: Sun },
+  { href: "/history", label: "ประวัติ", labelEn: "History", Icon: CalendarDays },
+  { href: "/settings", label: "ตั้งค่า", labelEn: "Settings", Icon: Settings },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -43,17 +44,14 @@ export function BottomNav() {
         <button
           type="button"
           onClick={() => openAddSheet()}
-          className="pressable fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50%-215px+1rem))] z-30 flex h-14 items-center gap-2 rounded-2xl bg-primary pl-4 pr-5 font-semibold text-on-primary shadow-float hover:opacity-90"
+          className="pressable fixed bottom-[calc(92px+env(safe-area-inset-bottom))] right-[max(16px,calc(50%-199px))] z-30 flex min-h-[52px] items-center gap-2 whitespace-nowrap rounded-full bg-accent px-[22px] font-semibold text-on-accent shadow-float hover:bg-accent-hover"
         >
-          <Plus aria-hidden size={22} strokeWidth={2.5} />
+          <Plus aria-hidden size={20} strokeWidth={2.5} />
           บันทึกอาหาร
         </button>
       )}
 
-      <nav
-        aria-label="เมนูหลัก"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
-      >
+      <nav aria-label="เมนูหลัก" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto grid max-w-[430px] grid-cols-3">
           {TABS.map((tab) => {
             const active = isActive(pathname, tab.href);
@@ -62,14 +60,17 @@ export function BottomNav() {
                 key={tab.href}
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={`pressable flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${
+                className={`pressable flex min-h-16 flex-col items-center gap-0.5 pb-2 pt-2.5 text-[13px] ${
                   active ? "text-primary" : "text-muted hover:text-text"
                 }`}
               >
-                <span className={`flex h-7 w-14 items-center justify-center rounded-full ${active ? "bg-primary-soft" : ""}`}>
-                  <tab.Icon aria-hidden size={22} strokeWidth={active ? 2.25 : 1.75} />
+                <span className={`flex h-[26px] w-[52px] items-center justify-center rounded-full ${active ? "bg-nav-pill" : ""}`}>
+                  <tab.Icon aria-hidden size={20} />
                 </span>
                 {tab.label}
+                <span lang="en" className="text-[10px] leading-tight text-muted" aria-hidden>
+                  {tab.labelEn}
+                </span>
               </Link>
             );
           })}

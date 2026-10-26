@@ -61,7 +61,7 @@ export function ErrorState({ message, code, provider, onRetry }: Props) {
       <span className="flex size-20 items-center justify-center rounded-full bg-surface-2 text-over-text">
         <Icon aria-hidden size={36} />
       </span>
-      <h1 className="mt-5 font-display text-2xl font-semibold">{title}</h1>
+      <h1 className="mt-5 font-heading text-2xl font-semibold">{title}</h1>
       <p className="mt-2 text-muted">{message}</p>
 
       <ol className="mt-6 w-full card p-4 text-left text-sm">
@@ -76,7 +76,7 @@ export function ErrorState({ message, code, provider, onRetry }: Props) {
         <button
           type="button"
           onClick={onRetry}
-          className="pressable min-h-12 rounded-xl bg-primary font-semibold text-on-primary hover:opacity-90"
+          className="pressable min-h-12 rounded-xl bg-accent font-semibold text-on-accent hover:opacity-90"
         >
           ลองใหม่
         </button>

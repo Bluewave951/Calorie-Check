@@ -10,6 +10,14 @@ export const MEAL_LABEL: Record<MealType, string> = {
   snack: "ว่าง",
 };
 
+/** ชื่อรองภาษาอังกฤษใต้หัวข้อมื้อ */
+export const MEAL_LABEL_EN: Record<MealType, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snack: "Snack",
+};
+
 export type FoodKind = "food" | "drink";
 
 export const SWEETNESS_LEVELS = ["none", "less", "normal", "extra"] as const;

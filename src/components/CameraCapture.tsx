@@ -25,10 +25,10 @@ export function CameraCapture({ onFile }: Props) {
         onClick={() => cameraRef.current?.click()}
         className="pressable flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface text-primary shadow-card hover:bg-surface-2"
       >
-        <span className="flex size-20 items-center justify-center rounded-full bg-primary text-on-primary">
+        <span className="flex size-20 items-center justify-center rounded-full bg-accent text-on-accent">
           <Camera aria-hidden size={36} />
         </span>
-        <span className="font-display text-xl font-semibold text-text">ถ่ายรูปอาหาร</span>
+        <span className="font-heading text-xl font-semibold text-text">ถ่ายรูปอาหาร</span>
         <span className="text-sm text-muted">ถ่ายให้เห็นทุกจานในเฟรมเดียว</span>
       </button>
       <button

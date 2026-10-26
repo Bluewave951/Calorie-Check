@@ -16,7 +16,7 @@ export function PeriodNav({ label, onPrev, onNext, canNext, prevLabel, nextLabel
       <button type="button" onClick={onPrev} aria-label={prevLabel} className="flex size-11 items-center justify-center rounded-full hover:bg-surface-2">
         <ChevronLeft aria-hidden size={22} />
       </button>
-      <h2 className="font-display text-lg font-semibold" aria-live="polite">
+      <h2 className="font-heading text-lg font-semibold" aria-live="polite">
         {label}
       </h2>
       <button

@@ -1,69 +1,124 @@
 @import "tailwindcss";
 
 /*
- * ระบบสี: พื้นเทาอุ่น (stone) + สีส้มเข้มของแบรนด์เป็นสีเดียวที่เด่น
- * ตรวจ contrast แล้ว: ข้อความหลัก/รอง ≥ 7:1, ปุ่มหลัก 5.2:1 (สว่าง) / 7.7:1 (มืด)
- * กราฟ: --chart-base กับ --over ผ่าน dataviz validator (ΔE 20.6 สว่าง, 32.8 มืด)
+ * ระบบสีตามต้นแบบ templates/calorie-check (calorie-check.css)
+ * พื้นเขียวอ่อน + การ์ดเขียว ไม่มีเส้นขอบ, ปุ่มหลักสีเขียวสด (--accent) ตัวอักษรเข้ม
+ * --primary คือเขียวเข้ม (accent-700) สำหรับข้อความ/ไอคอน, --over ใช้เฉพาะตอนกินเกินเป้า
  */
 :root {
-  --bg: #fafaf9;
-  --surface: #ffffff;
-  --surface-2: #f5f5f4;
-  --text: #1c1917;
-  --muted: #57534e;
-  --border: #e7e5e4;
-  --primary: #c2410c;
-  --primary-soft: #fff1e8;
+  --bg: #f3fbf1;
+  --surface: #e3f4df;
+  --surface-2: #d5ecd0;
+  --text: #1c241e;
+  --muted: #5f6861;
+  --border: #d3ddd1;
+  --primary: #0d7139;
+  --primary-soft: #e6f9ee;
+  --primary-strong: #074d27;
   --on-primary: #ffffff;
-  --ring: #f97316;
-  --track: #f1ede9;
-  --over: #e2574c;
-  --over-text: #b8332a;
-  --chart-base: #b5afaa;
-  --warn: #f5b83d;
-  --warn-text: #8a5a00;
-  --warn-bg: #fff6df;
-  --ok: #2f7a3e;
-  --scrim: rgb(12 10 9 / 0.5);
+  --accent: #1fb85a;
+  --accent-hover: #52cf84;
+  --on-accent: #201e1d;
+  --nav-pill: #c4f0d4;
+  --info-soft: #e0f7f5;
+  --info-text: #0b544c;
+  --ring: #1fb85a;
+  --track: color-mix(in srgb, #1c241e 10%, transparent);
+  --over: #c4503d;
+  --over-text: #a83f2d;
+  --over-soft: #f7dcd2;
+  --chart-base: #a9b5a8;
+  --warn: #d4982b;
+  --warn-text: #7a5200;
+  --warn-bg: #fbf0d4;
+  --ok: #15964a;
+  --scrim: rgb(10 14 12 / 0.45);
   /* toast ใช้สีกลับด้านกับพื้น */
-  --toast-bg: #1c1917;
-  --toast-text: #fafaf9;
-  --toast-accent: #fdba74;
-  --toast-ok: #86efac;
+  --toast-bg: #1c241e;
+  --toast-text: #f3fbf1;
+  --toast-accent: #92e2b0;
+  --toast-ok: #92e2b0;
   --toast-error: #fca5a5;
-  --shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 2px 8px rgb(28 25 23 / 0.04);
-  --shadow-lg: 0 8px 24px rgb(28 25 23 / 0.14);
+  --shadow: none;
+  --shadow-lg: 0 12px 32px rgb(28 36 30 / 0.18);
   color-scheme: light;
 }
 
+/* โหมดมืด: เลือกเองในหน้าตั้งค่า (data-theme="dark") หรือตามระบบเมื่อไม่ได้เลือกสว่าง */
+:root[data-theme="dark"] {
+  --bg: #131a15;
+  --surface: #1e2a21;
+  --surface-2: #26352a;
+  --text: #eef5ee;
+  --muted: #9fa6a0;
+  --border: #363d38;
+  --primary: #8ff0b9;
+  --primary-soft: #16301f;
+  --primary-strong: #c4f7da;
+  --on-primary: #131a15;
+  --accent: #3ddc84;
+  --accent-hover: #34b86c;
+  --on-accent: #201e1d;
+  --nav-pill: #1d4029;
+  --info-soft: #12302c;
+  --info-text: #ccfbf1;
+  --ring: #3ddc84;
+  --track: color-mix(in srgb, #eef5ee 10%, transparent);
+  --over: #ff5a6e;
+  --over-text: #ff7a8a;
+  --over-soft: #4a2026;
+  --chart-base: #56605a;
+  --warn: #e9b44f;
+  --warn-text: #e9b44f;
+  --warn-bg: #3d3119;
+  --ok: #5ee69c;
+  --scrim: rgb(0 0 0 / 0.65);
+  --toast-bg: #eef5ee;
+  --toast-text: #131a15;
+  --toast-accent: #0d7139;
+  --toast-ok: #15964a;
+  --toast-error: #b8332a;
+  --shadow: 0 0 0 1px color-mix(in srgb, #eef5ee 10%, transparent);
+  --shadow-lg: 0 0 0 1px color-mix(in srgb, #eef5ee 12%, transparent), 0 12px 32px #0008;
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0c0a09;
-    --surface: #1c1917;
-    --surface-2: #292524;
-    --text: #f5f5f4;
-    --muted: #a8a29e;
-    --border: #44403c;
-    --primary: #fb923c;
-    --primary-soft: #3b2415;
-    --on-primary: #1c1917;
-    --ring: #fb923c;
-    --track: #292524;
-    --over: #ff7a6e;
-    --over-text: #ff8f84;
-    --chart-base: #57534e;
-    --warn: #f7c65c;
-    --warn-text: #f7c65c;
-    --warn-bg: #33290f;
-    --ok: #7bc98a;
+  :root:not([data-theme="light"]) {
+    --bg: #131a15;
+    --surface: #1e2a21;
+    --surface-2: #26352a;
+    --text: #eef5ee;
+    --muted: #9fa6a0;
+    --border: #363d38;
+    --primary: #8ff0b9;
+    --primary-soft: #16301f;
+    --primary-strong: #c4f7da;
+    --on-primary: #131a15;
+    --accent: #3ddc84;
+    --accent-hover: #34b86c;
+    --on-accent: #201e1d;
+    --nav-pill: #1d4029;
+    --info-soft: #12302c;
+    --info-text: #ccfbf1;
+    --ring: #3ddc84;
+    --track: color-mix(in srgb, #eef5ee 10%, transparent);
+    --over: #ff5a6e;
+    --over-text: #ff7a8a;
+    --over-soft: #4a2026;
+    --chart-base: #56605a;
+    --warn: #e9b44f;
+    --warn-text: #e9b44f;
+    --warn-bg: #3d3119;
+    --ok: #5ee69c;
     --scrim: rgb(0 0 0 / 0.65);
-    --toast-bg: #f5f5f4;
-    --toast-text: #1c1917;
-    --toast-accent: #c2410c;
-    --toast-ok: #2f7a3e;
+    --toast-bg: #eef5ee;
+    --toast-text: #131a15;
+    --toast-accent: #0d7139;
+    --toast-ok: #15964a;
     --toast-error: #b8332a;
-    --shadow: none;
-    --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.5);
+    --shadow: 0 0 0 1px color-mix(in srgb, #eef5ee 10%, transparent);
+    --shadow-lg: 0 0 0 1px color-mix(in srgb, #eef5ee 12%, transparent), 0 12px 32px #0008;
     color-scheme: dark;
   }
 }
@@ -77,6 +132,14 @@
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-soft: var(--primary-soft);
+  --color-primary-strong: var(--primary-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-nav-pill: var(--nav-pill);
+  --color-info-soft: var(--info-soft);
+  --color-info-text: var(--info-text);
+  --color-over-soft: var(--over-soft);
   --color-on-primary: var(--on-primary);
   --color-ring: var(--ring);
   --color-track: var(--track);
@@ -92,9 +155,9 @@
   --color-toast-accent: var(--toast-accent);
   --color-toast-ok: var(--toast-ok);
   --color-toast-error: var(--toast-error);
-  --font-sans: var(--font-noto-thai), system-ui, sans-serif;
-  /* ฟอนต์เดียวทั้งแอป: หัวข้อใช้น้ำหนักแทนการเปลี่ยนฟอนต์ */
-  --font-display: var(--font-noto-thai), system-ui, sans-serif;
+  /* เนื้อหา: Figtree (ละติน) + Anuphan (ไทย), หัวข้อ/ตัวเลขเด่น: Caprasimo (ละติน) + Mitr (ไทย) */
+  --font-sans: var(--font-figtree), var(--font-anuphan), system-ui, sans-serif;
+  --font-heading: var(--font-caprasimo), var(--font-mitr), system-ui, sans-serif;
   --shadow-card: var(--shadow);
   --shadow-float: var(--shadow-lg);
 }
@@ -113,11 +176,11 @@ body {
 
 /* อยู่ใน layer components เพื่อให้ utility ของ Tailwind (เช่น border-warn) ทับได้ */
 @layer components {
-  /* การ์ด: เส้นขอบบาง + เงาอ่อน (โหมดมืดใช้เส้นขอบอย่างเดียว) */
+  /* การ์ด: พื้นเขียวมุมมน ไม่มีเส้นขอบ (โหมดมืดมีเส้นบางจากเงา) — ขอบใสไว้ให้ border-* ของ Tailwind ใส่สีได้ */
   .card {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+    border: 1px solid transparent;
+    border-radius: 28px;
     box-shadow: var(--shadow);
   }
 

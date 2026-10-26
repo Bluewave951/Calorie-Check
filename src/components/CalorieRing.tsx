@@ -5,36 +5,24 @@ interface Props {
   goal: number;
 }
 
-const SIZE = 148;
-const STROKE = 14;
-const RADIUS = (SIZE - STROKE) / 2;
+const VIEW = 200;
+const STROKE = 16;
+const RADIUS = 84;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "over" }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className={`text-lg font-semibold tabular-nums ${tone === "over" ? "text-over-text" : ""}`}>
-        {formatKcal(value)} <span className="text-xs font-normal text-muted">kcal</span>
-      </dd>
-    </div>
-  );
-}
-
-/** สรุปแคลอรี่วันนี้: วงแหวน + ตัวเลข กินไป / เป้า / เหลือ */
+/** สรุปแคลอรี่วันนี้: วงแหวนใหญ่กลางการ์ด + บรรทัด กินไป / เป้า */
 export function CalorieRing({ eaten, goal }: Props) {
   const over = eaten > goal;
   const progress = goal > 0 ? Math.min(1, eaten / goal) : 0;
-  const percent = goal > 0 ? Math.round((eaten / goal) * 100) : 0;
 
   return (
-    <div className="flex items-center gap-5">
-      <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
-        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90" aria-hidden>
-          <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="var(--track)" strokeWidth={STROKE} />
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative aspect-square w-52">
+        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="block size-full -rotate-90" aria-hidden>
+          <circle cx={VIEW / 2} cy={VIEW / 2} r={RADIUS} fill="none" stroke={over ? "var(--over-soft)" : "var(--track)"} strokeWidth={STROKE} />
           <circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
+            cx={VIEW / 2}
+            cy={VIEW / 2}
             r={RADIUS}
             fill="none"
             stroke={over ? "var(--over)" : "var(--ring)"}
@@ -45,23 +33,18 @@ export function CalorieRing({ eaten, goal }: Props) {
             className="transition-[stroke-dashoffset] duration-500 ease-out"
           />
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className={`text-xs font-medium ${over ? "text-over-text" : "text-muted"}`}>{over ? "เกินเป้า" : "เหลืออีก"}</span>
-          <span className={`text-3xl font-bold leading-tight tabular-nums ${over ? "text-over-text" : ""}`}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-sm text-muted">{over ? "เกินเป้า" : "เหลืออีก"}</span>
+          <span className={`font-heading text-[46px] leading-[1.05] tabular-nums ${over ? "text-over" : ""}`}>
             {formatKcal(Math.abs(goal - eaten))}
           </span>
-          <span className="text-xs text-muted">kcal</span>
+          <span className="text-[13px] text-muted">kcal</span>
         </div>
       </div>
 
-      <dl className="flex min-w-0 flex-1 flex-col gap-2.5" aria-label="สรุปแคลอรี่วันนี้">
-        <Stat label="กินไปแล้ว" value={eaten} tone={over ? "over" : undefined} />
-        <Stat label="เป้าวันนี้" value={goal} />
-        <div>
-          <dt className="sr-only">ความคืบหน้า</dt>
-          <dd className="text-xs text-muted">{percent}% ของเป้า</dd>
-        </div>
-      </dl>
+      <p className="text-sm text-muted">
+        กินไป <b className="tabular-nums text-text">{formatKcal(eaten)}</b> / เป้า <b className="tabular-nums text-text">{formatKcal(goal)}</b> kcal
+      </p>
     </div>
   );
 }

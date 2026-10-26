@@ -47,7 +47,7 @@ export function ConfirmDialog({ title, children, confirmLabel, cancelLabel = "à¸
             onConfirm();
             ref.current?.close();
           }}
-          className="pressable min-h-11 flex-1 rounded-xl bg-primary font-medium text-on-primary hover:opacity-90"
+          className="pressable min-h-11 flex-1 rounded-xl bg-accent font-medium text-on-accent hover:opacity-90"
         >
           {confirmLabel}
         </button>

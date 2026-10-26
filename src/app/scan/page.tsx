@@ -333,7 +333,7 @@ function ScanScreen() {
             type="button"
             onClick={save}
             disabled={draft.items.length === 0}
-            className="pressable min-h-12 rounded-xl bg-primary px-8 font-semibold text-on-primary hover:opacity-90 disabled:opacity-40"
+            className="pressable min-h-12 rounded-xl bg-accent px-8 font-semibold text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             บันทึก
           </button>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShieldAlert, Target } from "lucide-react";
+import { ChevronRight, Plus, ShieldAlert, Target } from "lucide-react";
 import { CalorieRing } from "@/components/CalorieRing";
 import { DayList } from "@/components/DayList";
 import { MacroBars } from "@/components/MacroBars";
@@ -23,6 +23,17 @@ function Skeleton() {
   );
 }
 
+function SectionTitle({ id, title, subtitle }: { id: string; title: string; subtitle: string }) {
+  return (
+    <h2 id={id} className="mb-3 flex items-baseline gap-2">
+      <span className="font-heading text-lg font-medium">{title}</span>
+      <span lang="en" className="text-[11px] text-muted">
+        {subtitle}
+      </span>
+    </h2>
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
   const now = useNow();
@@ -37,23 +48,21 @@ export default function HomePage() {
   const { unknown, ...macros } = sumMacros(scans.flatMap((scan) => scan.items));
 
   return (
-    <main className="flex flex-col gap-4">
-      <header className="flex items-center gap-3">
-        <img src="/icon.svg" alt="" className="size-9 rounded-xl" />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold leading-tight">{greeting(now)}</h1>
-          <p className="text-sm text-muted">{formatThaiDate(now)}</p>
-        </div>
+    <main className="flex flex-col gap-[18px]">
+      <header>
+        <p className="mb-1.5 font-heading text-sm text-primary">Calorie&amp;Check</p>
+        <h1 className="mb-0.5 font-heading text-[30px] font-medium leading-tight">{greeting(now)}</h1>
+        <p className="text-muted">{formatThaiDate(now)}</p>
       </header>
 
       {!settings.goalConfirmed && (
-        <Link href="/settings" className="pressable card flex items-center gap-3 border-primary/30 bg-primary-soft p-3 hover:opacity-90">
-          <Target aria-hidden size={22} className="shrink-0 text-primary" />
-          <span className="flex-1 text-sm">
-            <span className="block font-medium">ตั้งเป้าแคลอรี่ของคุณ</span>
-            <span className="text-muted">ตอนนี้ใช้ค่าเริ่มต้น {formatKcal(settings.dailyGoal)} kcal ต่อวัน</span>
-          </span>
-          <span className="text-sm font-medium text-primary">ตั้งค่า</span>
+        <Link
+          href="/settings"
+          className="pressable flex min-h-12 items-center gap-3 rounded-full bg-info-soft px-4 py-3 font-semibold text-info-text hover:opacity-90"
+        >
+          <Target aria-hidden size={20} className="shrink-0" />
+          <span className="flex-1">ตั้งเป้าแคลอรี่ของคุณ</span>
+          <ChevronRight aria-hidden size={20} className="shrink-0" />
         </Link>
       )}
 
@@ -68,26 +77,25 @@ export default function HomePage() {
         </Link>
       )}
 
-      <section aria-label="แคลอรี่วันนี้" className="card p-4">
+      <section aria-label="แคลอรี่วันนี้" className="card flex flex-col gap-4 px-4 pb-5 pt-6">
         <CalorieRing eaten={sumScans(scans)} goal={settings.dailyGoal} />
         {scans.length > 0 && <MacroBars eaten={macros} target={macroTargets(settings.dailyGoal, settings.profile)} unknown={unknown} />}
       </section>
 
       {frequent && frequent.length > 0 && (
         <section aria-labelledby="quick-title">
-          <h2 id="quick-title" className="mb-2 text-sm font-medium text-muted">
-            บันทึกด่วน · เมนูที่กินบ่อย
-          </h2>
+          <SectionTitle id="quick-title" title="บันทึกด่วน" subtitle="Quick log" />
           <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
             {frequent.map(({ food }) => (
               <li key={food.key} className="shrink-0">
                 <button
                   type="button"
                   onClick={() => router.push(`/scan?quick=${food.key}`)}
-                  className="pressable flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 text-sm hover:bg-surface-2"
+                  aria-label={`บันทึก${food.name_th} ${formatKcal(itemKcal(itemFromReference(food)))} kcal`}
+                  className="pressable flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-4 text-sm hover:bg-text/5"
                 >
+                  <Plus aria-hidden size={16} />
                   {food.name_th}
-                  <span className="text-xs text-muted tabular-nums">{formatKcal(itemKcal(itemFromReference(food)))}</span>
                 </button>
               </li>
             ))}
@@ -95,7 +103,10 @@ export default function HomePage() {
         </section>
       )}
 
-      <DayList date={today} scans={scans} />
+      <section aria-labelledby="meals-title">
+        <SectionTitle id="meals-title" title="มื้อวันนี้" subtitle="Meals" />
+        <DayList date={today} scans={scans} />
+      </section>
 
       {weights && <WeightCard entries={weights} today={today} profile={settings.profile} />}
 

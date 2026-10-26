@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Calorie&Check" description="Mobile calorie-tracker prototype: today ring, photo scan flow, history, settings" -->
+<helmet><script src="./ds-base.js"></script><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500&family=Anuphan:wght@400;600;700&display=swap"><link rel="stylesheet" href="./calorie-check.css"><script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script></helmet>
+<div id="root"></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;'auto'|'light'|'dark'&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    if (window.CC) { this.applyTheme(); return; }
+    const s = document.createElement('script');
+    s.src = './calorie-check.js';
+    s.onload = () => this.applyTheme();
+    document.body.appendChild(s);
+  }
+  componentDidUpdate(prev) { if (prev.theme !== this.props.theme) this.applyTheme(); }
+  applyTheme() { if (window.CC && this.props.theme) window.CC.setTheme(this.props.theme); }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

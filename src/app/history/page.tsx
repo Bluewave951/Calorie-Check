@@ -49,12 +49,12 @@ function DayView({
 
       <section className="flex items-end justify-between px-1" aria-live="polite">
         <div>
-          <h2 className="font-display text-lg font-semibold">{formatThaiDate(parseDateKey(selected))}</h2>
+          <h2 className="font-heading text-lg font-semibold">{formatThaiDate(parseDateKey(selected))}</h2>
           <p className={`text-sm ${over ? "text-over-text" : "text-muted"}`}>
             {over ? `เกินเป้า ${formatKcal(dayTotal - goal)} kcal` : `ต่ำกว่าเป้า ${formatKcal(goal - dayTotal)} kcal`}
           </p>
         </div>
-        <p className="font-display text-2xl font-bold tabular-nums">
+        <p className="font-heading text-2xl font-bold tabular-nums">
           {formatKcal(dayTotal)} <span className="text-sm font-normal text-muted">kcal</span>
         </p>
       </section>

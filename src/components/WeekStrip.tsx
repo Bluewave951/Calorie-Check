@@ -88,7 +88,7 @@ export function WeekStrip({ endDate, selected, today, totals, goal, onSelect, on
               </span>
               <span
                 className={`flex size-7 items-center justify-center rounded-full text-sm tabular-nums ${
-                  isSelected ? "bg-primary font-semibold text-on-primary" : key === today ? "font-semibold text-primary" : ""
+                  isSelected ? "bg-accent font-semibold text-on-accent" : key === today ? "font-semibold text-primary" : ""
                 }`}
               >
                 {day.getDate()}

@@ -112,7 +112,7 @@ export function WeightCard({ entries, today, profile }: { entries: WeightEntry[]
             className="min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-lg font-semibold tabular-nums outline-none focus:border-primary"
           />
           <span className="text-sm text-muted">กก.</span>
-          <button type="submit" disabled={!valid} className="pressable min-h-11 rounded-xl bg-primary px-4 font-semibold text-on-primary disabled:opacity-40">
+          <button type="submit" disabled={!valid} className="pressable min-h-11 rounded-xl bg-accent px-4 font-semibold text-on-accent disabled:opacity-40">
             บันทึก
           </button>
           <button type="button" onClick={() => setEditing(false)} className="pressable min-h-11 rounded-xl px-3 text-sm text-muted hover:bg-surface-2">

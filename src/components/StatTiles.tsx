@@ -10,7 +10,7 @@ function Tile({ label, value, unit, tone }: { label: string; value: string; unit
   return (
     <div className="rounded-2xl bg-surface p-3 shadow-card">
       <p className="text-xs text-muted">{label}</p>
-      <p className={`font-display text-xl font-bold tabular-nums ${tone === "over" ? "text-over-text" : ""}`}>
+      <p className={`font-heading text-xl font-bold tabular-nums ${tone === "over" ? "text-over-text" : ""}`}>
         {value}
         {unit && <span className="ml-1 text-xs font-normal text-muted">{unit}</span>}
       </p>
