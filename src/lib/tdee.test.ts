@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateTdee } from "./tdee";
+import { calculateTdee, goalWarnings } from "./tdee";
 import type { BodyProfile } from "./types";
 
 const profile = (over: Partial<BodyProfile> = {}): BodyProfile => ({
@@ -46,5 +46,24 @@ describe("calculateTdee (Mifflin-St Jeor)", () => {
     expect(calculateTdee(profile({ weightKg: 301 }))).toBeNull();
     expect(calculateTdee(profile({ weightKg: Number.NaN }))).toBeNull();
     expect(calculateTdee(profile({ age: 15, heightCm: 250, weightKg: 30 }))).not.toBeNull();
+  });
+});
+
+describe("goalWarnings", () => {
+  it("เป้าต่ำกว่าขั้นต่ำที่ปลอดภัย: หญิง 1,200 / ชาย 1,500 / ไม่ทราบเพศ 1,200", () => {
+    expect(goalWarnings(1199, profile({ sex: "female" }))).toEqual(["below_minimum"]);
+    expect(goalWarnings(1200, profile({ sex: "female" }))).toEqual([]);
+    expect(goalWarnings(1499, profile())).toEqual(["below_minimum"]);
+    expect(goalWarnings(1500, profile())).toEqual([]);
+    expect(goalWarnings(1199, undefined)).toEqual(["below_minimum"]);
+    expect(goalWarnings(1200, undefined)).toEqual([]);
+  });
+
+  it("BMI ต่ำกว่า 18.5 แต่เลือกลดน้ำหนัก", () => {
+    // 50 / 1.75² = 16.3
+    expect(goalWarnings(1800, profile({ weightKg: 50, weightGoal: "lose" }))).toEqual(["underweight_losing"]);
+    expect(goalWarnings(1800, profile({ weightKg: 50, weightGoal: "maintain" }))).toEqual([]);
+    // 57 / 1.75² = 18.6
+    expect(goalWarnings(1800, profile({ weightKg: 57, weightGoal: "lose" }))).toEqual([]);
   });
 });

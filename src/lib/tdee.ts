@@ -1,4 +1,4 @@
-import { MAX_GOAL, MIN_GOAL, type ActivityLevel, type BodyProfile, type WeightGoal } from "./types";
+import { MAX_GOAL, MIN_GOAL, type ActivityLevel, type BodyProfile, type Sex, type WeightGoal } from "./types";
 
 /** ตัวคูณระดับกิจกรรม (Harris-Benedict activity factors) */
 export const ACTIVITY_FACTOR: Record<ActivityLevel, number> = {
@@ -43,4 +43,23 @@ export function calculateTdee(profile: BodyProfile): TdeeResult | null {
   const tdee = Math.round(bmr * ACTIVITY_FACTOR[profile.activity]);
   const goal = Math.min(MAX_GOAL, Math.max(MIN_GOAL, tdee + GOAL_ADJUSTMENT[profile.weightGoal]));
   return { bmr: Math.round(bmr), tdee, goal };
+}
+
+/** เป้าแคลอรี่ขั้นต่ำที่ไม่ควรต่ำกว่าโดยไม่มีผู้เชี่ยวชาญดูแล (ไม่ทราบเพศ = ค่าที่ต่ำกว่า) */
+export const SAFE_MIN_GOAL: Record<Sex, number> = { female: 1200, male: 1500 };
+const UNDERWEIGHT_BMI = 18.5;
+
+export type GoalWarning = "below_minimum" | "underweight_losing";
+
+export function bmi(profile: Pick<BodyProfile, "heightCm" | "weightKg">): number {
+  const meters = profile.heightCm / 100;
+  return profile.weightKg / (meters * meters);
+}
+
+/** ข้อควรระวังของเป้าแคลอรี่ เทียบกับข้อมูลร่างกาย (ถ้ามี) */
+export function goalWarnings(goal: number, profile: BodyProfile | undefined): GoalWarning[] {
+  const warnings: GoalWarning[] = [];
+  if (goal < (profile ? SAFE_MIN_GOAL[profile.sex] : SAFE_MIN_GOAL.female)) warnings.push("below_minimum");
+  if (profile?.weightGoal === "lose" && bmi(profile) < UNDERWEIGHT_BMI) warnings.push("underweight_losing");
+  return warnings;
 }

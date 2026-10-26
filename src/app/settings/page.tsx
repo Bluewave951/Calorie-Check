@@ -1,17 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, LoaderCircle } from "lucide-react";
+import { ChevronDown, LoaderCircle, TriangleAlert } from "lucide-react";
 import { BackupSection } from "@/components/BackupSection";
 import { TdeeCalculator } from "@/components/TdeeCalculator";
 import { saveSettings } from "@/lib/db";
 import { useSettings } from "@/lib/hooks";
 import { formatKcal } from "@/lib/format";
+import { goalWarnings, SAFE_MIN_GOAL, type GoalWarning } from "@/lib/tdee";
 import { showToast } from "@/lib/toast";
 import type { AiHealth } from "@/lib/aiCore";
 import { MAX_GOAL, MIN_GOAL, type BodyProfile, type Settings } from "@/lib/types";
 
 const GOAL_PRESETS = [1500, 1800, 2000, 2500];
+
+function warningText(warning: GoalWarning, profile: BodyProfile | undefined): string {
+  if (warning === "underweight_losing") return "BMI ของคุณต่ำกว่า 18.5 อยู่แล้ว ไม่ควรลดน้ำหนักเพิ่ม ลองเลือก “คงน้ำหนัก”";
+  const min = profile ? SAFE_MIN_GOAL[profile.sex] : SAFE_MIN_GOAL.female;
+  return `เป้าต่ำกว่า ${formatKcal(min)} kcal อาจได้สารอาหารไม่พอ ควรปรึกษาแพทย์หรือนักโภชนาการก่อน`;
+}
 
 const PROVIDER_LABEL = { ollama: "Ollama (บนเครื่อง)", openrouter: "OpenRouter (ออนไลน์)" } as const;
 
@@ -67,6 +74,13 @@ function GoalSection({ initial }: { initial: Settings }) {
         <p id="goal-help" className={`mt-1.5 text-sm ${valid ? "text-muted" : "text-over-text"}`}>
           {valid ? "ผู้ใหญ่ทั่วไปอยู่ราว 1,600–2,500 kcal" : `กรอกตัวเลข ${formatKcal(MIN_GOAL)}–${formatKcal(MAX_GOAL)}`}
         </p>
+        {valid &&
+          goalWarnings(goal, profile).map((warning) => (
+            <p key={warning} role="status" className="mt-2 flex gap-2 rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn-text">
+              <TriangleAlert aria-hidden size={18} className="mt-0.5 shrink-0" />
+              {warningText(warning, profile)}
+            </p>
+          ))}
         <div className="mt-3 grid grid-cols-4 gap-1.5" aria-label="ค่าที่ใช้บ่อย">
           {GOAL_PRESETS.map((preset) => (
             <button
