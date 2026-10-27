@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BODY_LIMITS } from "./tdee";
 import {
   ACTIVITY_LEVELS,
+  LOSS_RATES,
   MAX_GOAL,
   MEAL_TYPES,
   MIN_GOAL,
@@ -57,14 +58,30 @@ const profileSchema = z.object({
   weightGoal: z.enum(WEIGHT_GOALS),
 });
 
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+const reminderSchema = z.object({
+  enabled: z.boolean(),
+  hour: z.number().int().min(0).max(23),
+});
+
+const programSchema = z.object({
+  startDate: dateSchema,
+  startWeightKg: between(BODY_LIMITS.weightKg),
+  targetWeightKg: between(BODY_LIMITS.weightKg),
+  ratePerWeek: z.literal(LOSS_RATES),
+});
+
 const settingsSchema = z.object({
   dailyGoal: z.number().int().min(MIN_GOAL).max(MAX_GOAL),
   model: z.string(),
   profile: profileSchema.optional(),
+  reminder: reminderSchema.optional(),
+  program: programSchema.optional(),
 });
 
 const weightSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: dateSchema,
   weightKg: between(BODY_LIMITS.weightKg),
 });
 

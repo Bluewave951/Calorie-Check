@@ -126,6 +126,26 @@ export interface WeightEntry {
   weightKg: number;
 }
 
+/** การเตือนเมื่อกินยังไม่ครบเป้าแคลอรี่ */
+export interface ReminderSettings {
+  enabled: boolean;
+  /** ชั่วโมงที่เริ่มเตือน 0–23 ตามเวลาท้องถิ่น */
+  hour: number;
+}
+
+export const LOSS_RATES = [0.25, 0.5, 0.75] as const;
+/** กก. ที่ตั้งใจลดต่อสัปดาห์ */
+export type LossRate = (typeof LOSS_RATES)[number];
+
+/** โปรแกรมลดน้ำหนัก: จากน้ำหนักเริ่มต้นไปถึงน้ำหนักเป้าหมายด้วยอัตราคงที่ */
+export interface WeightProgram {
+  /** วันเริ่มโปรแกรม YYYY-MM-DD */
+  startDate: string;
+  startWeightKg: number;
+  targetWeightKg: number;
+  ratePerWeek: LossRate;
+}
+
 export interface Settings {
   dailyGoal: number;
   /** ว่าง = ใช้โมเดลเริ่มต้นของเซิร์ฟเวอร์ */
@@ -136,6 +156,10 @@ export interface Settings {
   profile?: BodyProfile;
   /** เวลาที่ข้อมูลเริ่มเปลี่ยนหลังส่งออกไฟล์สำรองครั้งล่าสุด (ไม่มี = ไม่มีข้อมูลค้าง) */
   unbackedSince?: number;
+  /** ไม่มี = เปิดเตือนตามค่าเริ่มต้น */
+  reminder?: ReminderSettings;
+  /** ไม่มี = ยังไม่ได้เริ่มโปรแกรมลดน้ำหนัก */
+  program?: WeightProgram;
 }
 
 /** ช่วงเป้าแคลอรี่ที่แอปรองรับ */

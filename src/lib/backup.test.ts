@@ -46,6 +46,17 @@ describe("ไฟล์สำรอง", () => {
     expect(() => parseBackup(JSON.stringify(broken))).toThrow(BackupError);
   });
 
+  it("เก็บการตั้งค่าการเตือนและโปรแกรมลดน้ำหนักไว้ในไฟล์สำรอง", () => {
+    const reminder = { enabled: false, hour: 20 };
+    const program = { startDate: "2026-10-27", startWeightKg: 80, targetWeightKg: 75, ratePerWeek: 0.5 } as const;
+    const backup = buildBackup([], { ...settings, reminder, program });
+    expect(parseBackup(JSON.stringify(backup)).settings).toMatchObject({ reminder, program });
+    const badRate = { ...backup, settings: { ...backup.settings, program: { ...program, ratePerWeek: 2 } } };
+    expect(() => parseBackup(JSON.stringify(badRate))).toThrow(BackupError);
+    const badHour = { ...backup, settings: { ...backup.settings, reminder: { enabled: true, hour: 24 } } };
+    expect(() => parseBackup(JSON.stringify(badHour))).toThrow(BackupError);
+  });
+
   it("เก็บบันทึกน้ำหนักไว้ในไฟล์สำรอง และไฟล์เก่าที่ไม่มีได้รายการว่าง", () => {
     const weights = [{ date: "2026-10-20", weightKg: 70.4 }];
     expect(parseBackup(JSON.stringify(buildBackup([], settings, weights))).weights).toEqual(weights);

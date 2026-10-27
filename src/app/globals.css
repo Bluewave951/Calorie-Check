@@ -7,8 +7,8 @@
  */
 :root {
   --bg: #f3fbf1;
-  --surface: #e3f4df;
-  --surface-2: #d5ecd0;
+  --surface: #ffffff;
+  --surface-2: #eaf5e7;
   --text: #1c241e;
   --muted: #5f6861;
   --border: #d3ddd1;
@@ -28,6 +28,8 @@
   --over-text: #a83f2d;
   --over-soft: #f7dcd2;
   --chart-base: #a9b5a8;
+  /* เส้นข้อมูลของกราฟ (ตรวจด้วย dataviz validator: L, chroma, contrast ผ่านบน --surface) */
+  --chart-line: #0d7139;
   --warn: #d4982b;
   --warn-text: #7a5200;
   --warn-bg: #fbf0d4;
@@ -39,7 +41,30 @@
   --toast-accent: #92e2b0;
   --toast-ok: #92e2b0;
   --toast-error: #fca5a5;
-  --shadow: none;
+  --shadow: 0 1px 2px rgb(28 36 30 / 0.05), 0 6px 20px rgb(28 36 30 / 0.06);
+  /* สีประจำมื้อ (soft = พื้นการ์ด, strong = ไอคอน/ปุ่ม ตัวอักษรขาวบนนี้อ่านได้) */
+  --meal-breakfast: #b45309;
+  --meal-breakfast-soft: #fff4dc;
+  --meal-lunch: #c2410c;
+  --meal-lunch-soft: #ffe9dc;
+  --meal-dinner: #4f46e5;
+  --meal-dinner-soft: #ebebff;
+  --meal-snack: #be185d;
+  --meal-snack-soft: #fde7f2;
+  /* สีสารอาหาร */
+  --macro-protein: #2563eb;
+  --macro-carb: #f59e0b;
+  --macro-fat: #db2777;
+  /* การ์ดสรุปแคลอรี่ (ตัวอักษรขาว) */
+  --hero-from: #15803d;
+  --hero-to: #0f766e;
+  --hero-over-from: #b91c1c;
+  --hero-over-to: #9d174d;
+  --weight: #0369a1;
+  --weight-soft: #e0f2fe;
+  --page-glow-1: #c9f2d8;
+  --page-glow-2: #ffe8c7;
+  --page-glow-3: #e3e4ff;
   --shadow-lg: 0 12px 32px rgb(28 36 30 / 0.18);
   color-scheme: light;
 }
@@ -68,6 +93,7 @@
   --over-text: #ff7a8a;
   --over-soft: #4a2026;
   --chart-base: #56605a;
+  --chart-line: #27a85d;
   --warn: #e9b44f;
   --warn-text: #e9b44f;
   --warn-bg: #3d3119;
@@ -79,6 +105,26 @@
   --toast-ok: #15964a;
   --toast-error: #b8332a;
   --shadow: 0 0 0 1px color-mix(in srgb, #eef5ee 10%, transparent);
+  --meal-breakfast: #fbbf24;
+  --meal-breakfast-soft: #33280f;
+  --meal-lunch: #fb923c;
+  --meal-lunch-soft: #3a2214;
+  --meal-dinner: #a5b4fc;
+  --meal-dinner-soft: #23244a;
+  --meal-snack: #f9a8d4;
+  --meal-snack-soft: #3d1a2c;
+  --macro-protein: #60a5fa;
+  --macro-carb: #fbbf24;
+  --macro-fat: #f472b6;
+  --hero-from: #166534;
+  --hero-to: #115e59;
+  --hero-over-from: #991b1b;
+  --hero-over-to: #831843;
+  --weight: #7dd3fc;
+  --weight-soft: #12283a;
+  --page-glow-1: #173d24;
+  --page-glow-2: #2f2512;
+  --page-glow-3: #1d1f3d;
   --shadow-lg: 0 0 0 1px color-mix(in srgb, #eef5ee 12%, transparent), 0 12px 32px #0008;
   color-scheme: dark;
 }
@@ -107,6 +153,7 @@
     --over-text: #ff7a8a;
     --over-soft: #4a2026;
     --chart-base: #56605a;
+    --chart-line: #27a85d;
     --warn: #e9b44f;
     --warn-text: #e9b44f;
     --warn-bg: #3d3119;
@@ -118,6 +165,26 @@
     --toast-ok: #15964a;
     --toast-error: #b8332a;
     --shadow: 0 0 0 1px color-mix(in srgb, #eef5ee 10%, transparent);
+    --meal-breakfast: #fbbf24;
+    --meal-breakfast-soft: #33280f;
+    --meal-lunch: #fb923c;
+    --meal-lunch-soft: #3a2214;
+    --meal-dinner: #a5b4fc;
+    --meal-dinner-soft: #23244a;
+    --meal-snack: #f9a8d4;
+    --meal-snack-soft: #3d1a2c;
+    --macro-protein: #60a5fa;
+    --macro-carb: #fbbf24;
+    --macro-fat: #f472b6;
+    --hero-from: #166534;
+    --hero-to: #115e59;
+    --hero-over-from: #991b1b;
+    --hero-over-to: #831843;
+    --weight: #7dd3fc;
+    --weight-soft: #12283a;
+    --page-glow-1: #173d24;
+    --page-glow-2: #2f2512;
+    --page-glow-3: #1d1f3d;
     --shadow-lg: 0 0 0 1px color-mix(in srgb, #eef5ee 12%, transparent), 0 12px 32px #0008;
     color-scheme: dark;
   }
@@ -146,6 +213,7 @@
   --color-over: var(--over);
   --color-over-text: var(--over-text);
   --color-chart-base: var(--chart-base);
+  --color-chart-line: var(--chart-line);
   --color-warn: var(--warn);
   --color-warn-text: var(--warn-text);
   --color-warn-bg: var(--warn-bg);
@@ -155,6 +223,19 @@
   --color-toast-accent: var(--toast-accent);
   --color-toast-ok: var(--toast-ok);
   --color-toast-error: var(--toast-error);
+  --color-meal-breakfast: var(--meal-breakfast);
+  --color-meal-breakfast-soft: var(--meal-breakfast-soft);
+  --color-meal-lunch: var(--meal-lunch);
+  --color-meal-lunch-soft: var(--meal-lunch-soft);
+  --color-meal-dinner: var(--meal-dinner);
+  --color-meal-dinner-soft: var(--meal-dinner-soft);
+  --color-meal-snack: var(--meal-snack);
+  --color-meal-snack-soft: var(--meal-snack-soft);
+  --color-macro-protein: var(--macro-protein);
+  --color-macro-carb: var(--macro-carb);
+  --color-macro-fat: var(--macro-fat);
+  --color-weight: var(--weight);
+  --color-weight-soft: var(--weight-soft);
   /* เนื้อหา: Figtree (ละติน) + Anuphan (ไทย), หัวข้อ/ตัวเลขเด่น: Caprasimo (ละติน) + Mitr (ไทย) */
   --font-sans: var(--font-figtree), var(--font-anuphan), system-ui, sans-serif;
   --font-heading: var(--font-caprasimo), var(--font-mitr), system-ui, sans-serif;
@@ -166,6 +247,16 @@ html,
 body {
   background: var(--bg);
   color: var(--text);
+}
+
+/* พื้นหลังมีแสงสีอ่อน ๆ ด้านบน (เขียว/ส้ม/คราม) แล้วจางเป็นสีพื้น */
+body {
+  background-image:
+    radial-gradient(60% 320px at 0% 0%, var(--page-glow-1), transparent),
+    radial-gradient(55% 300px at 100% 0%, var(--page-glow-2), transparent),
+    radial-gradient(70% 360px at 50% 100%, var(--page-glow-3), transparent);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 body {
@@ -182,6 +273,24 @@ body {
     border: 1px solid transparent;
     border-radius: 28px;
     box-shadow: var(--shadow);
+  }
+
+  /* การ์ดสรุปแคลอรี่: ไล่สีเข้ม ตัวอักษรขาว — เปลี่ยนตัวแปรสีภายในให้วงแหวน/ข้อความเป็นสีขาว */
+  .hero {
+    --ring: #ffffff;
+    --track: rgb(255 255 255 / 0.22);
+    --over: #ffffff;
+    --over-soft: rgb(255 255 255 / 0.22);
+    --text: #ffffff;
+    --muted: rgb(255 255 255 / 0.82);
+    color: var(--text);
+    background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
+    border-radius: 28px;
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--hero-to) 35%, transparent);
+  }
+  .hero[data-over="true"] {
+    background: linear-gradient(135deg, var(--hero-over-from), var(--hero-over-to));
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--hero-over-to) 35%, transparent);
   }
 
   /* ปุ่มกด: ตอบสนองด้วยสี/ความทึบ ไม่ขยับ layout */
