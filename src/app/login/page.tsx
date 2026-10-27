@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { isValidEmail, safeNextPath, toLoginEmail } from "@/lib/auth";
+import { loginErrorMessage } from "@/lib/loginError";
 import { CLOUD_ENABLED, getSupabase } from "@/lib/supabase/client";
 
 const NOT_ALLOWED_TEXT = "บัญชีนี้ยังไม่ได้รับอนุญาตให้ใช้แอป ขอให้ผู้ดูแลเพิ่มอีเมลของคุณใน ALLOWED_EMAILS";
@@ -42,7 +43,7 @@ export default function LoginPage() {
     const { error: signInError } = await getSupabase().auth.signInWithPassword({ email, password });
     if (signInError) {
       setBusy(false);
-      setError(signInError.status === 429 ? "ลองหลายครั้งเกินไป รอสักครู่แล้วลองใหม่" : "อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง");
+      setError(loginErrorMessage(signInError));
       return;
     }
     // โหลดใหม่ทั้งหน้า เพื่อให้ proxy เห็น cookie ของ session
