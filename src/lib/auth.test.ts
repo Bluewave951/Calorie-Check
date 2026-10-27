@@ -1,5 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { decideAccess, isEmailAllowed, parseAllowedEmails, safeNextPath } from "./auth";
+import { decideAccess, isEmailAllowed, isValidEmail, isValidOtpCode, normalizeEmail, parseAllowedEmails, safeNextPath } from "./auth";
+
+describe("normalizeEmail / isValidEmail", () => {
+  it("ตัดช่องว่างและเปลี่ยนเป็นตัวพิมพ์เล็ก", () => {
+    expect(normalizeEmail("  Mom@Gmail.COM ")).toBe("mom@gmail.com");
+  });
+
+  it("รับเฉพาะรูปแบบอีเมล", () => {
+    expect(isValidEmail("mom@gmail.com")).toBe(true);
+    for (const value of ["", "mom", "mom@", "@gmail.com", "mom@gmail", "mom @gmail.com"]) {
+      expect(isValidEmail(value)).toBe(false);
+    }
+  });
+});
+
+describe("isValidOtpCode", () => {
+  it("รับตัวเลข 6–10 หลัก (Supabase ตั้งความยาวรหัสได้)", () => {
+    expect(isValidOtpCode("123456")).toBe(true);
+    expect(isValidOtpCode("12345678")).toBe(true);
+    for (const value of ["", "12345", "12345a", "1234567890123", " 123456"]) {
+      expect(isValidOtpCode(value)).toBe(false);
+    }
+  });
+});
 
 describe("parseAllowedEmails", () => {
   it("แยกด้วย , หรือขึ้นบรรทัดใหม่ ตัดช่องว่าง และไม่สนตัวพิมพ์เล็ก/ใหญ่", () => {
@@ -42,8 +65,8 @@ describe("safeNextPath", () => {
 describe("decideAccess", () => {
   const allowed = ["mom@gmail.com"];
 
-  it("หน้า login, callback ของ Google และไฟล์ของ PWA เปิดได้โดยไม่ต้องล็อกอิน", () => {
-    for (const pathname of ["/login", "/auth/callback", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/icon-maskable.svg"]) {
+  it("หน้า login และไฟล์ของ PWA เปิดได้โดยไม่ต้องล็อกอิน", () => {
+    for (const pathname of ["/login", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/icon-maskable.svg"]) {
       expect(decideAccess({ pathname, email: undefined, allowed })).toBe("allow");
     }
   });
@@ -65,6 +88,6 @@ describe("decideAccess", () => {
 
   it("path ที่ขึ้นต้นเหมือนแต่ไม่ใช่หน้า public ยังต้องล็อกอิน", () => {
     expect(decideAccess({ pathname: "/login-admin", email: undefined, allowed })).toBe("login");
-    expect(decideAccess({ pathname: "/auth/callbackx", email: undefined, allowed })).toBe("login");
+    expect(decideAccess({ pathname: "/auth/callback", email: undefined, allowed })).toBe("login");
   });
 });

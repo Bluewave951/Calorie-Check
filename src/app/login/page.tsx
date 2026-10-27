@@ -2,68 +2,141 @@
 
 import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
-import { safeNextPath } from "@/lib/auth";
+import { isValidEmail, isValidOtpCode, normalizeEmail, safeNextPath } from "@/lib/auth";
 import { CLOUD_ENABLED, getSupabase } from "@/lib/supabase/client";
 
-const ERROR_TEXT: Record<string, string> = {
-  not_allowed: "บัญชี Google นี้ยังไม่ได้รับอนุญาตให้ใช้แอป ลองบัญชีอื่น หรือขอให้ผู้ดูแลเพิ่มอีเมลของคุณ",
-  auth_failed: "เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง",
-};
+const NOT_ALLOWED_TEXT = "อีเมลนี้ยังไม่ได้รับอนุญาตให้ใช้แอป ลองอีเมลอื่น หรือขอให้ผู้ดูแลเพิ่มอีเมลของคุณ";
 
-/** ล็อกอินด้วยบัญชี Google (ผ่าน Supabase Auth) */
+const inputClass = "mt-1.5 min-h-12 w-full rounded-xl border border-border bg-bg px-4 text-lg outline-none focus:border-primary";
+const buttonClass =
+  "pressable mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent font-semibold text-on-accent hover:opacity-90 disabled:opacity-40";
+
+/** ล็อกอินด้วยรหัสที่ส่งไปทางอีเมล (Supabase Auth) — ไม่ต้องจำรหัสผ่าน */
 export default function LoginPage() {
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("error");
-    if (code) setError(ERROR_TEXT[code] ?? ERROR_TEXT.auth_failed);
+    if (new URLSearchParams(window.location.search).get("error") === "not_allowed") setError(NOT_ALLOWED_TEXT);
   }, []);
 
-  const signIn = async () => {
+  const sendCode = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const address = normalizeEmail(email);
+    if (!isValidEmail(address)) return setError("รูปแบบอีเมลไม่ถูกต้อง");
     setBusy(true);
     setError(null);
     const supabase = getSupabase();
-    // ล็อกอินด้วยบัญชีที่ไม่ได้รับอนุญาตอยู่ → ออกก่อน แล้วให้เลือกบัญชีใหม่
+    // ล็อกอินด้วยอีเมลที่ไม่ได้รับอนุญาตค้างอยู่ → ออกก่อน
     await supabase.auth.signOut().catch(() => {});
-    const next = safeNextPath(new URLSearchParams(window.location.search).get("next"));
-    const redirectTo = new URL("/auth/callback", window.location.origin);
-    redirectTo.searchParams.set("next", next);
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: redirectTo.href, queryParams: { prompt: "select_account" } },
-    });
-    // สำเร็จ = เบราว์เซอร์กำลังไปหน้า Google จึงไม่ต้องปิด busy
-    if (oauthError) {
-      setError(ERROR_TEXT.auth_failed);
-      setBusy(false);
+    const { error: sendError } = await supabase.auth.signInWithOtp({ email: address, options: { shouldCreateUser: true } });
+    setBusy(false);
+    if (sendError) {
+      setError(sendError.status === 429 ? "ขอรหัสบ่อยเกินไป รอสักครู่แล้วลองใหม่" : "ส่งรหัสไม่สำเร็จ ตรวจอีเมลแล้วลองใหม่");
+      return;
     }
+    setEmail(address);
+    setCode("");
+    setStep("code");
+  };
+
+  const verify = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!isValidOtpCode(code)) return setError("กรอกรหัสตัวเลขจากอีเมลให้ครบ");
+    setBusy(true);
+    setError(null);
+    const { error: verifyError } = await getSupabase().auth.verifyOtp({ email, token: code, type: "email" });
+    if (verifyError) {
+      setBusy(false);
+      setError("รหัสไม่ถูกต้องหรือหมดอายุ ลองใหม่ หรือขอรหัสใหม่");
+      return;
+    }
+    // โหลดใหม่ทั้งหน้า เพื่อให้ proxy เห็น cookie ของ session (อีเมลไม่ได้รับอนุญาต → กลับมาหน้านี้พร้อมข้อความ)
+    window.location.replace(safeNextPath(new URLSearchParams(window.location.search).get("next")));
   };
 
   return (
     <main className="pt-16">
       <h1 className="mb-1 font-heading text-[30px] font-medium leading-tight">Calorie&amp;Check</h1>
       <p className="mb-6 text-muted">เข้าสู่ระบบเพื่อดูและบันทึกข้อมูลของคุณได้จากทุกเครื่อง</p>
-      <div className="card p-4">
-        {error && (
-          <p role="alert" className="mb-3 rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn-text">
-            {error}
+
+      {!CLOUD_ENABLED ? (
+        <p className="card p-4 text-sm text-muted">ยังไม่ได้ตั้งค่า Supabase แอปจึงเก็บข้อมูลในเครื่องนี้และไม่ต้องล็อกอิน</p>
+      ) : step === "email" ? (
+        <form onSubmit={sendCode} className="card p-4" noValidate>
+          <label htmlFor="email" className="text-sm font-medium">
+            อีเมล
+          </label>
+          <input
+            id="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={error !== null}
+            aria-describedby={error ? "login-error" : "email-help"}
+            className={inputClass}
+          />
+          <p id="email-help" className="mt-1.5 text-sm text-muted">
+            เราจะส่งรหัสตัวเลขไปที่อีเมลนี้
           </p>
-        )}
-        {CLOUD_ENABLED ? (
+          <ErrorText error={error} />
+          <button type="submit" disabled={busy || email.trim() === ""} className={buttonClass}>
+            {busy && <LoaderCircle aria-hidden className="size-5 animate-spin" />}
+            ส่งรหัสเข้าอีเมล
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={verify} className="card p-4" noValidate>
+          <label htmlFor="code" className="text-sm font-medium">
+            รหัสจากอีเมล
+          </label>
+          <input
+            id="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            maxLength={10}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            aria-invalid={error !== null}
+            aria-describedby={error ? "login-error" : "code-help"}
+            className={`${inputClass} text-center text-2xl tracking-[0.3em] tabular-nums`}
+          />
+          <p id="code-help" className="mt-1.5 text-sm text-muted">
+            ส่งไปที่ <span className="font-medium text-text">{email}</span> แล้ว (ถ้าไม่เห็น ลองดูในจดหมายขยะ)
+          </p>
+          <ErrorText error={error} />
+          <button type="submit" disabled={busy || code.length === 0} className={buttonClass}>
+            {busy && <LoaderCircle aria-hidden className="size-5 animate-spin" />}
+            เข้าสู่ระบบ
+          </button>
           <button
             type="button"
-            onClick={signIn}
-            disabled={busy}
-            className="pressable flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent font-semibold text-on-accent hover:opacity-90 disabled:opacity-40"
+            onClick={() => {
+              setStep("email");
+              setError(null);
+            }}
+            className="pressable mt-2 min-h-11 w-full rounded-xl text-sm font-semibold text-muted hover:bg-surface-2"
           >
-            {busy && <LoaderCircle aria-hidden className="size-5 animate-spin" />}
-            เข้าสู่ระบบด้วย Google
+            เปลี่ยนอีเมล / ขอรหัสใหม่
           </button>
-        ) : (
-          <p className="text-sm text-muted">ยังไม่ได้ตั้งค่า Supabase แอปจึงเก็บข้อมูลในเครื่องนี้และไม่ต้องล็อกอิน</p>
-        )}
-      </div>
+        </form>
+      )}
     </main>
+  );
+}
+
+function ErrorText({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <p id="login-error" role="alert" className="mt-2 rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn-text">
+      {error}
+    </p>
   );
 }

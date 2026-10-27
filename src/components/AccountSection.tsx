@@ -37,7 +37,7 @@ export function AccountSection() {
       </h2>
       <div className="card flex items-center gap-3 p-4">
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-muted">ล็อกอินด้วย Google</p>
+          <p className="text-sm text-muted">ล็อกอินด้วยอีเมล</p>
           <p className="truncate font-medium">{email ?? "…"}</p>
         </div>
         <button

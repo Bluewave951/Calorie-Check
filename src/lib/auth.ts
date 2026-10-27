@@ -1,18 +1,32 @@
 /**
- * กฎการเข้าแอป: ล็อกอินด้วย Google (Supabase Auth) และอีเมลต้องอยู่ใน ALLOWED_EMAILS
- * ไม่จำกัดอีเมล = ใครมีบัญชี Google ก็เข้ามาใช้โควตา AI ได้
+ * กฎการเข้าแอป: ล็อกอินด้วยรหัสทางอีเมล (Supabase Auth) และอีเมลต้องอยู่ใน ALLOWED_EMAILS
+ * ไม่จำกัดอีเมล = ใครมีอีเมลก็สมัครเข้ามาใช้โควตา AI ได้
  */
+
+export function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/** ตรวจรูปแบบคร่าว ๆ ก่อนส่งรหัส (Supabase ตรวจซ้ำอีกชั้น) */
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+/** รหัสในอีเมลจาก Supabase: ตัวเลข 6 หลักโดยปกติ (ตั้งได้ถึง 10) */
+export function isValidOtpCode(value: string): boolean {
+  return /^\d{6,10}$/.test(value);
+}
 
 /** "a@x.com, b@x.com" หรือบรรทัดละอีเมล → ["a@x.com", "b@x.com"] */
 export function parseAllowedEmails(value: string | undefined): string[] {
   return (value ?? "")
     .split(/[,\n]/)
-    .map((email) => email.trim().toLowerCase())
+    .map(normalizeEmail)
     .filter(Boolean);
 }
 
 export function isEmailAllowed(email: string | undefined, allowed: string[]): boolean {
-  return email !== undefined && allowed.includes(email.toLowerCase());
+  return email !== undefined && allowed.includes(normalizeEmail(email));
 }
 
 /** หน้าที่จะกลับไปหลังล็อกอิน: เฉพาะ path ภายในแอป กันลิงก์หลอกพาไปเว็บอื่น */
@@ -22,8 +36,8 @@ export function safeNextPath(value: string | null): string {
   return value;
 }
 
-/** หน้าที่ต้องเปิดได้ก่อนล็อกอิน (หน้า login, ที่ Google ส่งกลับมา และไฟล์ที่ระบบติดตั้ง PWA ดึงโดยไม่ส่ง cookie) */
-const PUBLIC_PATHS = new Set(["/login", "/auth/callback", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/icon-maskable.svg"]);
+/** หน้าที่ต้องเปิดได้ก่อนล็อกอิน (หน้า login และไฟล์ที่ระบบติดตั้ง PWA ดึงโดยไม่ส่ง cookie) */
+const PUBLIC_PATHS = new Set(["/login", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/icon-maskable.svg"]);
 
 export type Access = "allow" | "login" | "not_allowed" | "unauthorized" | "forbidden";
 

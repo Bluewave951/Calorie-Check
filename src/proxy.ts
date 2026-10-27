@@ -43,7 +43,7 @@ export function createProxy({ allowedEmails, resolveSession }: ProxyOptions) {
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-/** ตั้งค่า Supabase แล้วทุกหน้าต้องล็อกอินด้วย Google และอีเมลต้องอยู่ใน ALLOWED_EMAILS */
+/** ตั้งค่า Supabase แล้วทุกหน้าต้องล็อกอิน (รหัสทางอีเมล) และอีเมลต้องอยู่ใน ALLOWED_EMAILS */
 export const proxy = createProxy({
   allowedEmails: process.env.ALLOWED_EMAILS,
   resolveSession: url && key ? (request) => resolveSupabaseSession(request, url, key) : null,
