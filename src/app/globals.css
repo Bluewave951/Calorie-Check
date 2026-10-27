@@ -28,6 +28,8 @@
   --over-text: #a83f2d;
   --over-soft: #f7dcd2;
   --chart-base: #a9b5a8;
+  /* เส้นข้อมูลของกราฟ (ตรวจด้วย dataviz validator: L, chroma, contrast ผ่านบน --surface) */
+  --chart-line: #0d7139;
   --warn: #d4982b;
   --warn-text: #7a5200;
   --warn-bg: #fbf0d4;
@@ -68,6 +70,7 @@
   --over-text: #ff7a8a;
   --over-soft: #4a2026;
   --chart-base: #56605a;
+  --chart-line: #27a85d;
   --warn: #e9b44f;
   --warn-text: #e9b44f;
   --warn-bg: #3d3119;
@@ -107,6 +110,7 @@
     --over-text: #ff7a8a;
     --over-soft: #4a2026;
     --chart-base: #56605a;
+    --chart-line: #27a85d;
     --warn: #e9b44f;
     --warn-text: #e9b44f;
     --warn-bg: #3d3119;
@@ -146,6 +150,7 @@
   --color-over: var(--over);
   --color-over-text: var(--over-text);
   --color-chart-base: var(--chart-base);
+  --color-chart-line: var(--chart-line);
   --color-warn: var(--warn);
   --color-warn-text: var(--warn-text);
   --color-warn-bg: var(--warn-bg);

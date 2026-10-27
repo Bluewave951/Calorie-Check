@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectedWeight, programEndDate, programGoal, programIssues, programProgress, weeklySummary } from "./program";
+import { expectedWeight, programEndDate, programGoal, programIssues, programProgress, weeklySummary, weightChart } from "./program";
 import type { BodyProfile, WeightProgram } from "./types";
 
 // BMR = 10·80 + 6.25·175 − 5·30 + 5 = 1748.75 → TDEE (นั่งทำงาน ×1.2) = 2099
@@ -104,6 +104,15 @@ describe("weeklySummary", () => {
       overDays: 1,
       average: 1475,
       tip: "keep_going",
+      days: [
+        { date: "2026-10-20", kcal: 1500, status: "on_target" },
+        { date: "2026-10-21", kcal: 1200, status: "on_target" },
+        { date: "2026-10-22", kcal: 1575, status: "on_target" },
+        { date: "2026-10-23", kcal: 1100, status: "under" },
+        { date: "2026-10-24", kcal: 2000, status: "over" },
+        { date: "2026-10-25", kcal: null, status: "none" },
+        { date: "2026-10-26", kcal: null, status: "none" },
+      ],
     });
   });
 
@@ -122,5 +131,35 @@ describe("weeklySummary", () => {
 
   it("ไม่มีบันทึกเลย → ค่าเฉลี่ย 0 และแนะนำให้บันทึก", () => {
     expect(weeklySummary({}, goal, today)).toMatchObject({ loggedDays: 0, average: 0, tip: "log_more" });
+  });
+});
+
+describe("weightChart", () => {
+  const weights = [
+    { date: "2026-10-20", weightKg: 81 }, // ก่อนเริ่มโปรแกรม ไม่แสดง
+    { date: "2026-11-03", weightKg: 79.6 },
+    { date: "2026-10-27", weightKg: 80 },
+  ];
+
+  it("แสดงน้ำหนักตั้งแต่วันเริ่มโปรแกรม เรียงตามวัน และเส้นแผนจากจุดเริ่มถึงเป้าหมาย", () => {
+    expect(weightChart(program, weights, "2026-11-05")).toEqual({
+      from: "2026-10-27",
+      to: "2027-01-05",
+      actual: [
+        { date: "2026-10-27", weightKg: 80 },
+        { date: "2026-11-03", weightKg: 79.6 },
+      ],
+      plan: [
+        { date: "2026-10-27", weightKg: 80 },
+        { date: "2027-01-05", weightKg: 75 },
+      ],
+      minKg: 74.5,
+      maxKg: 80.5,
+    });
+  });
+
+  it("เลยวันที่คาดว่าจะถึงเป้าแล้ว → แกนเวลายาวถึงวันนี้ และแกนน้ำหนักครอบน้ำหนักที่ขึ้นเกินจุดเริ่ม", () => {
+    const chart = weightChart(program, [{ date: "2027-02-01", weightKg: 81.2 }], "2027-02-10");
+    expect(chart).toMatchObject({ to: "2027-02-10", minKg: 74.5, maxKg: 81.7 });
   });
 });

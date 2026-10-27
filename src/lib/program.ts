@@ -3,7 +3,7 @@ import { addDays, dateKey, parseDateKey } from "./nutrition";
 import { REMINDER_RATIO } from "./reminder";
 import type { DailyTotals } from "./stats";
 import { bmi, calculateTdee, SAFE_MIN_GOAL, UNDERWEIGHT_BMI } from "./tdee";
-import type { BodyProfile, LossRate, WeightProgram } from "./types";
+import type { BodyProfile, LossRate, WeightEntry, WeightProgram } from "./types";
 
 /** พลังงานในไขมัน 1 กก. โดยประมาณ */
 export const KCAL_PER_KG = 7700;
@@ -90,6 +90,8 @@ export const MIN_LOGGED_DAYS = 5;
 
 export type WeeklyTip = "log_more" | "eat_less" | "eat_more" | "keep_going";
 
+export type DayStatus = "none" | "under" | "on_target" | "over";
+
 export interface WeeklySummary {
   from: string;
   to: string;
@@ -100,6 +102,8 @@ export interface WeeklySummary {
   /** เฉลี่ยต่อวันที่บันทึก */
   average: number;
   tip: WeeklyTip;
+  /** ทั้ง 7 วัน เรียงจากเก่าไปใหม่ (ไม่ได้บันทึก = kcal null) */
+  days: { date: string; kcal: number | null; status: DayStatus }[];
 }
 
 /** สรุป 7 วันที่ผ่านมา (ไม่รวมวันนี้ที่ยังกินไม่จบ) เทียบกับเป้าแคลอรี่ */
@@ -108,23 +112,57 @@ export function weeklySummary(totals: DailyTotals, goal: number, today: string):
   const keys = Array.from({ length: 7 }, (_, i) => dateKey(addDays(end, i - 6)));
   const min = goal * REMINDER_RATIO;
   const max = goal * ON_TARGET_MAX_RATIO;
+  const statusOf = (kcal: number | undefined): DayStatus =>
+    kcal === undefined ? "none" : kcal < min ? "under" : kcal > max ? "over" : "on_target";
 
-  let loggedDays = 0;
-  let onTargetDays = 0;
-  let underDays = 0;
-  let overDays = 0;
-  let total = 0;
-  for (const key of keys) {
-    const kcal = totals[key];
-    if (kcal === undefined) continue;
-    loggedDays++;
-    total += kcal;
-    if (kcal < min) underDays++;
-    else if (kcal > max) overDays++;
-    else onTargetDays++;
-  }
-  const average = loggedDays ? Math.round(total / loggedDays) : 0;
+  const days = keys.map((date) => ({ date, kcal: totals[date] ?? null, status: statusOf(totals[date]) }));
+  const logged = days.filter((d) => d.kcal !== null);
+  const count = (status: DayStatus) => days.filter((d) => d.status === status).length;
+  const loggedDays = logged.length;
+  const average = loggedDays ? Math.round(logged.reduce((sum, d) => sum + d.kcal!, 0) / loggedDays) : 0;
   const tip: WeeklyTip =
     loggedDays < MIN_LOGGED_DAYS ? "log_more" : average > max ? "eat_less" : average < min ? "eat_more" : "keep_going";
-  return { from: keys[0], to: keys[6], loggedDays, onTargetDays, underDays, overDays, average, tip };
+  return {
+    from: keys[0],
+    to: keys[6],
+    loggedDays,
+    onTargetDays: count("on_target"),
+    underDays: count("under"),
+    overDays: count("over"),
+    average,
+    tip,
+    days,
+  };
+}
+
+/** ระยะเผื่อบน-ล่างของแกนน้ำหนัก (กก.) */
+const CHART_PADDING_KG = 0.5;
+
+export interface WeightChart {
+  from: string;
+  to: string;
+  /** น้ำหนักที่ชั่งตั้งแต่วันเริ่มโปรแกรม เรียงตามวัน */
+  actual: WeightEntry[];
+  /** เส้นแผน: จุดเริ่ม → น้ำหนักเป้าหมาย ณ วันที่คาดว่าจะถึง */
+  plan: [WeightEntry, WeightEntry];
+  minKg: number;
+  maxKg: number;
+}
+
+/** ข้อมูลกราฟน้ำหนักจริงเทียบเส้นแผน (แกนเวลาถึงวันที่คาดว่าจะถึงเป้า หรือวันนี้ถ้าเลยมาแล้ว) */
+export function weightChart(program: WeightProgram, weights: WeightEntry[], today: string): WeightChart {
+  const end = programEndDate(program);
+  const actual = weights.filter((w) => w.date >= program.startDate).sort((a, b) => a.date.localeCompare(b.date));
+  const kgs = [program.startWeightKg, program.targetWeightKg, ...actual.map((w) => w.weightKg)];
+  return {
+    from: program.startDate,
+    to: today > end ? today : end,
+    actual,
+    plan: [
+      { date: program.startDate, weightKg: program.startWeightKg },
+      { date: end, weightKg: program.targetWeightKg },
+    ],
+    minKg: round1(Math.min(...kgs) - CHART_PADDING_KG),
+    maxKg: round1(Math.max(...kgs) + CHART_PADDING_KG),
+  };
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { WeeklyBars, WeightChartCard } from "./ProgramCharts";
 import { saveSettings } from "@/lib/db";
 import { formatKcal, formatThaiDate } from "@/lib/format";
 import { mealPlan } from "@/lib/mealPlan";
@@ -97,6 +98,7 @@ function WeeklyCard({ totals, goal, today }: { totals: DailyTotals; goal: number
           {shortDate(summary.from)} – {shortDate(summary.to)}
         </span>
       </h2>
+      <WeeklyBars summary={summary} goal={goal} />
       <dl className="grid grid-cols-4 gap-2 text-center text-sm">
         <div className="rounded-xl bg-surface-2 py-2">
           <dt className="text-xs text-muted">บันทึก</dt>
@@ -179,6 +181,7 @@ export function ProgramDashboard({
   return (
     <>
       <ProgressCard program={program} latestKg={latestKg} today={today} />
+      <WeightChartCard program={program} weights={weights} today={today} />
       {totals ? <WeeklyCard totals={totals} goal={settings.dailyGoal} today={today} /> : <div className="h-40 animate-pulse rounded-2xl bg-surface-2" aria-busy />}
       <MealPlanCard goal={settings.dailyGoal} today={today} />
       <p className="px-2 text-sm text-muted">ชั่งน้ำหนักที่หน้า “วันนี้” สัปดาห์ละครั้ง ช่วงเวลาเดิม (เช่น ตื่นนอนก่อนกินข้าว) เพื่อให้ติดตามได้แม่น</p>
