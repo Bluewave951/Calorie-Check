@@ -11,7 +11,9 @@ export function ProgramLink({ program, weights, today }: { program?: WeightProgr
 
   return (
     <Link href="/program" className="pressable card flex items-center gap-3 p-4 hover:bg-surface-2">
-      <TrendingDown aria-hidden size={20} className="shrink-0 text-muted" />
+      <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+        <TrendingDown size={22} />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-muted">โปรแกรมลดน้ำหนัก</span>
         {program && progress ? (

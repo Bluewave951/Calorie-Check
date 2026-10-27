@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Scan } from "./types";
 import {
   REFERENCE_FOODS,
   canAdjustSweetness,
@@ -11,6 +12,7 @@ import {
   itemFromAi,
   itemKcal,
   itemMacros,
+  kcalByMeal,
   replaceWithReference,
   searchReferences,
   servingUnitOf,
@@ -249,5 +251,27 @@ describe("สารอาหารหลักของรายการอา�
       itemFromAi(ai({ name_th: "ชาไทยปั่น", name_en: "", matchKey: null })),
     ];
     expect(sumMacros(items)).toEqual({ protein: 12, carb: 57, fat: 8, unknown: 1 });
+  });
+});
+
+describe("kcalByMeal", () => {
+  const scan = (meal: Scan["meal"], grams: number): Scan => ({
+    id: `${meal}-${grams}`,
+    date: "2026-10-27",
+    meal,
+    createdAt: 0,
+    thumbnail: null,
+    items: [withGrams(itemFromAi(ai()), grams)],
+  });
+
+  it("รวมแคลอรี่แยกตามมื้อ มื้อที่ไม่มีบันทึก = 0", () => {
+    const kcal = (grams: number) => itemKcal(withGrams(itemFromAi(ai()), grams));
+    const result = kcalByMeal([scan("breakfast", 100), scan("breakfast", 200), scan("dinner", 100)]);
+    expect(result).toEqual({
+      breakfast: kcal(100) + kcal(200),
+      lunch: 0,
+      dinner: kcal(100),
+      snack: 0,
+    });
   });
 });

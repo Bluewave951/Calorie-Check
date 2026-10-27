@@ -33,7 +33,7 @@ function Sparkline({ entries, today }: { entries: WeightEntry[]; today: string }
     .join(" ");
   return (
     <svg aria-hidden width={WIDTH} height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="shrink-0 overflow-visible">
-      <polyline points={points} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={points} fill="none" stroke="var(--weight)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -66,7 +66,9 @@ export function WeightCard({ entries, today, profile }: { entries: WeightEntry[]
   return (
     <section aria-labelledby="weight-title" className="card p-4">
       <div className="flex items-center gap-3">
-        <Scale aria-hidden size={20} className="shrink-0 text-muted" />
+        <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-weight-soft text-weight">
+          <Scale size={22} />
+        </span>
         <div className="min-w-0 flex-1">
           <h2 id="weight-title" className="text-sm font-medium text-muted">
             น้ำหนักตัว
@@ -123,7 +125,7 @@ export function WeightCard({ entries, today, profile }: { entries: WeightEntry[]
         <button
           type="button"
           onClick={open}
-          className="pressable mt-3 min-h-11 w-full rounded-xl border border-border text-sm font-medium hover:bg-surface-2"
+          className="pressable mt-3 min-h-12 w-full rounded-full bg-weight-soft text-sm font-semibold text-weight hover:opacity-90"
         >
           {trend?.latest.date === today ? "แก้น้ำหนักวันนี้" : "บันทึกน้ำหนักวันนี้"}
         </button>

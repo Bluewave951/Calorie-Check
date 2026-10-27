@@ -52,7 +52,7 @@ export function BottomNav() {
         </button>
       )}
 
-      <nav aria-label="เมนูหลัก" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg pb-[env(safe-area-inset-bottom)]">
+      <nav aria-label="เมนูหลัก" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
         <div className="mx-auto grid max-w-[430px] grid-cols-4">
           {TABS.map((tab) => {
             const active = isActive(pathname, tab.href);
@@ -62,7 +62,7 @@ export function BottomNav() {
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
                 className={`pressable flex min-h-16 flex-col items-center gap-0.5 pb-2 pt-2.5 text-[13px] ${
-                  active ? "text-primary" : "text-muted hover:text-text"
+                  active ? "font-semibold text-primary" : "text-muted hover:text-text"
                 }`}
               >
                 <span className={`flex h-[26px] w-[52px] items-center justify-center rounded-full ${active ? "bg-nav-pill" : ""}`}>

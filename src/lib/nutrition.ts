@@ -1,6 +1,6 @@
 import foods from "../data/thai-foods.json";
 import type { AiItem } from "./schema";
-import type { FoodItem, MealType, ReferenceFood, Scan, Sweetness } from "./types";
+import { MEAL_TYPES, type FoodItem, type MealType, type ReferenceFood, type Scan, type Sweetness } from "./types";
 
 export const REFERENCE_FOODS = foods as ReferenceFood[];
 
@@ -113,6 +113,13 @@ export function sumItems(items: FoodItem[]): number {
 
 export function sumScans(scans: Scan[]): number {
   return scans.reduce((sum, scan) => sum + sumItems(scan.items), 0);
+}
+
+/** แคลอรี่รวมของแต่ละมื้อ (มื้อที่ไม่มีบันทึก = 0) */
+export function kcalByMeal(scans: Scan[]): Record<MealType, number> {
+  const totals = Object.fromEntries(MEAL_TYPES.map((meal) => [meal, 0])) as Record<MealType, number>;
+  for (const scan of scans) totals[scan.meal] += sumItems(scan.items);
+  return totals;
 }
 
 export function newId(): string {
