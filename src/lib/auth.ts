@@ -17,12 +17,12 @@ export function isValidOtpCode(value: string): boolean {
   return /^\d{6,10}$/.test(value);
 }
 
-/** "a@x.com, b@x.com" หรือบรรทัดละอีเมล → ["a@x.com", "b@x.com"] */
+/**
+ * "a@x.com, b@x.com" → ["a@x.com", "b@x.com"]
+ * ดึงเฉพาะส่วนที่เป็นอีเมล จึงทนเครื่องหมายคำพูด ตัวคั่น , ; ช่องว่าง ขึ้นบรรทัด หรือเผลอวาง "ALLOWED_EMAILS=" มาด้วย
+ */
 export function parseAllowedEmails(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(/[,\n]/)
-    .map(normalizeEmail)
-    .filter(Boolean);
+  return (value?.match(/[^\s,;"'=]+@[^\s,;"'=]+/g) ?? []).map(normalizeEmail);
 }
 
 export function isEmailAllowed(email: string | undefined, allowed: string[]): boolean {

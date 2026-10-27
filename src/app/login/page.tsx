@@ -20,7 +20,21 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("error") === "not_allowed") setError(NOT_ALLOWED_TEXT);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") !== "not_allowed") return;
+    setError(NOT_ALLOWED_TEXT);
+    // บอกอีเมลที่ล็อกอินอยู่ และจำนวนใน ALLOWED_EMAILS ที่เซิร์ฟเวอร์อ่านได้ ให้เทียบกับค่าใน Vercel ได้ง่าย
+    getSupabase()
+      .auth.getUser()
+      .then(({ data }) => {
+        const count = params.get("allowed");
+        const lines = [NOT_ALLOWED_TEXT, `ล็อกอินอยู่ด้วย: ${data.user?.email ?? "ไม่ทราบ"}`];
+        if (count !== null) {
+          lines.push(count === "0" ? "เซิร์ฟเวอร์ยังไม่เห็นค่า ALLOWED_EMAILS (ตั้งแล้วต้อง Redeploy)" : `ALLOWED_EMAILS ที่เซิร์ฟเวอร์อ่านได้: ${count} อีเมล`);
+        }
+        setError(lines.join("\n"));
+      })
+      .catch(() => {});
   }, []);
 
   const sendCode = async (event: React.FormEvent) => {
@@ -135,7 +149,7 @@ export default function LoginPage() {
 function ErrorText({ error }: { error: string | null }) {
   if (!error) return null;
   return (
-    <p id="login-error" role="alert" className="mt-2 rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn-text">
+    <p id="login-error" role="alert" className="mt-2 whitespace-pre-line rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn-text">
       {error}
     </p>
   );

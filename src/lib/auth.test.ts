@@ -29,6 +29,13 @@ describe("parseAllowedEmails", () => {
     expect(parseAllowedEmails(" Mom@Gmail.com, dad@gmail.com\nkid@gmail.com ,")).toEqual(["mom@gmail.com", "dad@gmail.com", "kid@gmail.com"]);
   });
 
+  it("ทนรูปแบบที่พิมพ์พลาดง่ายใน Vercel: เครื่องหมายคำพูด และคั่นด้วย ; หรือช่องว่าง", () => {
+    expect(parseAllowedEmails(`"mom@gmail.com"`)).toEqual(["mom@gmail.com"]);
+    expect(parseAllowedEmails(`'mom@gmail.com, dad@gmail.com'`)).toEqual(["mom@gmail.com", "dad@gmail.com"]);
+    expect(parseAllowedEmails("mom@gmail.com; dad@gmail.com kid@gmail.com")).toEqual(["mom@gmail.com", "dad@gmail.com", "kid@gmail.com"]);
+    expect(parseAllowedEmails("ALLOWED_EMAILS=mom@gmail.com")).toEqual(["mom@gmail.com"]);
+  });
+
   it("ไม่ได้ตั้งค่า → รายชื่อว่าง", () => {
     expect(parseAllowedEmails(undefined)).toEqual([]);
     expect(parseAllowedEmails("")).toEqual([]);

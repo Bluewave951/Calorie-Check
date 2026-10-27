@@ -32,8 +32,11 @@ export function createProxy({ allowedEmails, resolveSession }: ProxyOptions) {
     }
     if (access === "login" || access === "not_allowed") {
       const url = new URL("/login", request.url);
-      if (access === "not_allowed") url.searchParams.set("error", "not_allowed");
-      else url.searchParams.set("next", pathname + search);
+      if (access === "not_allowed") {
+        url.searchParams.set("error", "not_allowed");
+        // จำนวนอย่างเดียว (ไม่บอกอีเมล): 0 = Vercel ยังไม่ได้ส่ง ALLOWED_EMAILS ให้แอป เช่น ลืม Redeploy
+        url.searchParams.set("allowed", String(allowed.length));
+      } else url.searchParams.set("next", pathname + search);
       return withCookies(NextResponse.redirect(url), response);
     }
     return response;

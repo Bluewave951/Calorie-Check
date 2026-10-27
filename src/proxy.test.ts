@@ -43,6 +43,14 @@ describe("proxy", () => {
     expect(api.status).toBe(403);
   });
 
+  it("not_allowed บอกจำนวนอีเมลที่เซิร์ฟเวอร์อ่านได้ (ไม่บอกตัวอีเมล) ช่วยหาว่าตั้งค่าใน Vercel ไม่ติด", async () => {
+    const twoAllowed = await proxyFor("stranger@gmail.com")(request("/"));
+    expect(new URL(twoAllowed.headers.get("location") ?? "").searchParams.get("allowed")).toBe("2");
+
+    const noneSet = await proxyFor("stranger@gmail.com", "")(request("/"));
+    expect(new URL(noneSet.headers.get("location") ?? "").searchParams.get("allowed")).toBe("0");
+  });
+
   it("อีเมลที่อนุญาต → ปล่อยผ่าน พร้อม cookie ที่ต่ออายุแล้ว", async () => {
     const res = await proxyFor("Mom@gmail.com")(request("/"));
     expect(res.headers.get("x-middleware-next")).toBe("1");
