@@ -34,8 +34,8 @@ export function BottomNav() {
   // เปลี่ยนหน้าแล้วต้องไม่มีแผ่นค้างอยู่
   useEffect(() => setSheet(null), [pathname]);
 
-  // หน้าสแกนมีแถบบันทึกของตัวเองด้านล่าง
-  if (pathname.startsWith("/scan")) return null;
+  // หน้าสแกนมีแถบบันทึกของตัวเองด้านล่าง / หน้า login ยังใช้เมนูไม่ได้
+  if (pathname.startsWith("/scan") || pathname === "/login") return null;
   const showFab = pathname === "/" || pathname.startsWith("/history");
 
   return (

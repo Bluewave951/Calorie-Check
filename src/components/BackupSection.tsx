@@ -7,6 +7,7 @@ import { backupFileName, BackupError, buildBackup, parseBackup, summarize, type 
 import { DATA_CHANGED_EVENT, getAllScans, getSettings, getWeights, importData, markBackedUp } from "@/lib/db";
 import { formatKcal, formatThaiDate } from "@/lib/format";
 import { parseDateKey } from "@/lib/nutrition";
+import { CLOUD_ENABLED } from "@/lib/supabase/client";
 import { showToast } from "@/lib/toast";
 
 function describe(summary: BackupSummary): string {
@@ -91,7 +92,7 @@ export function BackupSection() {
   return (
     <div className="card p-4">
       <p className="text-sm">
-        <span className="text-muted">ในเครื่องนี้: </span>
+        <span className="text-muted">{CLOUD_ENABLED ? "บน cloud: " : "ในเครื่องนี้: "}</span>
         <span className="font-medium">{summary ? describe(summary) : "…"}</span>
       </p>
 

@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, LoaderCircle, TriangleAlert } from "lucide-react";
+import { AccountSection } from "@/components/AccountSection";
 import { BackupSection } from "@/components/BackupSection";
 import { TdeeCalculator } from "@/components/TdeeCalculator";
 import { ThemeSection } from "@/components/ThemeSection";
 import { saveSettings } from "@/lib/db";
+import { CLOUD_ENABLED } from "@/lib/supabase/client";
 import { useSettings } from "@/lib/hooks";
 import { formatKcal } from "@/lib/format";
 import { goalWarnings, SAFE_MIN_GOAL, type GoalWarning } from "@/lib/tdee";
@@ -238,9 +240,17 @@ export default function SettingsPage() {
   return (
     <main className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">ตั้งค่า</h1>
+      {CLOUD_ENABLED && <AccountSection />}
       <GoalSection initial={settings} />
       <section aria-labelledby="backup-title">
-        <SectionTitle id="backup-title" hint="ข้อมูลเก็บในมือถือเครื่องนี้เท่านั้น ควรส่งออกเก็บไว้เป็นระยะ">
+        <SectionTitle
+          id="backup-title"
+          hint={
+            CLOUD_ENABLED
+              ? "ข้อมูลเก็บบน cloud แล้ว ใช้ส่วนนี้ย้ายข้อมูลจากแอปเดิม หรือเก็บสำเนาไว้เอง"
+              : "ข้อมูลเก็บในมือถือเครื่องนี้เท่านั้น ควรส่งออกเก็บไว้เป็นระยะ"
+          }
+        >
           สำรองข้อมูล
         </SectionTitle>
         <BackupSection />

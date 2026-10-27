@@ -1,41 +1,31 @@
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+"use client";
+
+import { createSupabaseStore } from "./cloudStore";
+import { createIdbCache } from "./localCache";
 import { sumItems } from "./nutrition";
 import type { DailyTotals } from "./stats";
-import { DEFAULT_SETTINGS, type Scan, type Settings, type WeightEntry } from "./types";
+import { createCachedStore, createMemoryCache, SaveError, type DataStore, type LocalCache, type ScanQuery } from "./store";
+import { CLOUD_ENABLED, getSupabase } from "./supabase/client";
+import { showToast } from "./toast";
+import type { Scan, Settings, WeightEntry } from "./types";
 
-interface CalorieDB extends DBSchema {
-  scans: {
-    key: string;
-    value: Scan;
-    indexes: { "by-date": string };
-  };
-  settings: {
-    key: string;
-    value: Settings;
-  };
-  weights: {
-    key: string;
-    value: WeightEntry;
-  };
+/**
+ * จุดเดียวที่หน้าจอใช้อ่าน/เขียนข้อมูล
+ * - ตั้งค่า Supabase แล้ว: เก็บบน cloud + สำเนาในเครื่องไว้ดูตอนเน็ตหลุด
+ * - ไม่ได้ตั้งค่า: เก็บใน IndexedDB อย่างเดียว (แบบเดิม)
+ */
+let cache: LocalCache | null = null;
+let store: DataStore | null = null;
+
+function localCache(): LocalCache {
+  cache ??= typeof indexedDB === "undefined" ? createMemoryCache() : createIdbCache();
+  return cache;
 }
 
-let dbPromise: Promise<IDBPDatabase<CalorieDB>> | null = null;
-
-function db() {
-  dbPromise ??= openDB<CalorieDB>("calorie-check", 2, {
-    upgrade(database, oldVersion) {
-      if (oldVersion < 1) {
-        const scans = database.createObjectStore("scans", { keyPath: "id" });
-        scans.createIndex("by-date", "date");
-        database.createObjectStore("settings");
-      }
-      if (oldVersion < 2) database.createObjectStore("weights", { keyPath: "date" });
-    },
-  });
-  return dbPromise;
+function data(): DataStore {
+  store ??= CLOUD_ENABLED ? createCachedStore(createSupabaseStore(getSupabase()), localCache(), () => navigator.onLine) : localCache();
+  return store;
 }
-
-const SETTINGS_KEY = "settings";
 
 /** แจ้งหน้าอื่นในแท็บเดียวกันว่าข้อมูลเปลี่ยน */
 export const DATA_CHANGED_EVENT = "calorie-check:data-changed";
@@ -44,109 +34,103 @@ function notifyChanged() {
   window.dispatchEvent(new Event(DATA_CHANGED_EVENT));
 }
 
-function byCreatedAt(a: Scan, b: Scan) {
-  return a.createdAt - b.createdAt;
+/** บันทึกแล้วแจ้งหน้าอื่น / บันทึกไม่สำเร็จ → แจ้งผู้ใช้ แล้ว throw ต่อให้หน้าจอหยุดทำขั้นถัดไป */
+async function save(action: () => Promise<void>, { markUnbacked = true } = {}): Promise<void> {
+  try {
+    await action();
+  } catch (error) {
+    if (error instanceof SaveError) showToast({ message: error.message, tone: "error" });
+    throw error;
+  }
+  if (markUnbacked) await markUnbackedLocally();
+  notifyChanged();
 }
 
-export async function getScansByDate(date: string): Promise<Scan[]> {
-  return (await (await db()).getAllFromIndex("scans", "by-date", date)).sort(byCreatedAt);
+/** จำเวลาที่มีข้อมูลค้างไม่ได้สำรองครั้งแรก — ใช้เฉพาะโหมดเก็บในเครื่อง (บน cloud ไม่ต้องสำรองเอง) */
+async function markUnbackedLocally(): Promise<void> {
+  if (CLOUD_ENABLED) return;
+  const stored = await localCache().getSettings();
+  if (stored.unbackedSince !== undefined) return;
+  await localCache().saveSettings({ ...stored, unbackedSince: Date.now() });
+}
+
+export function getScansByDate(date: string): Promise<Scan[]> {
+  return data().getScansByDate(date);
 }
 
 /** การสแกนตั้งแต่วันที่ from ถึง to (รวมทั้งสองวัน) */
-export async function getScansInRange(from: string, to: string): Promise<Scan[]> {
-  return (await (await db()).getAllFromIndex("scans", "by-date", IDBKeyRange.bound(from, to))).sort(byCreatedAt);
+export function getScansInRange(from: string, to: string, query?: ScanQuery): Promise<Scan[]> {
+  return data().getScansInRange(from, to, query);
 }
 
-/** ยอด kcal ต่อวันในช่วงวันที่ — อ่านทีละรายการด้วย cursor ไม่เก็บรูปย่อไว้ในหน่วยความจำ */
+/** ยอด kcal ต่อวันในช่วงวันที่ — ไม่ดึงรูปย่อ */
 export async function getDailyTotals(from: string, to: string): Promise<DailyTotals> {
   const totals: DailyTotals = {};
-  let cursor = await (await db()).transaction("scans").store.index("by-date").openCursor(IDBKeyRange.bound(from, to));
-  while (cursor) {
-    const scan = cursor.value;
+  for (const scan of await getScansInRange(from, to, { thumbnails: false })) {
     totals[scan.date] = (totals[scan.date] ?? 0) + sumItems(scan.items);
-    cursor = await cursor.continue();
   }
   return totals;
 }
 
-export async function getScan(id: string): Promise<Scan | undefined> {
-  return (await db()).get("scans", id);
+export function getScan(id: string): Promise<Scan | undefined> {
+  return data().getScan(id);
 }
 
-/** จำเวลาที่มีข้อมูลค้างไม่ได้สำรองครั้งแรก (ไม่แตะ goalConfirmed) */
-async function markUnbacked(): Promise<void> {
-  const database = await db();
-  const stored = await database.get("settings", SETTINGS_KEY);
-  if (stored?.unbackedSince !== undefined) return;
-  await database.put("settings", { ...DEFAULT_SETTINGS, ...stored, unbackedSince: Date.now() }, SETTINGS_KEY);
+export function getAllScans(): Promise<Scan[]> {
+  return data().getAllScans();
 }
 
-export async function putScan(scan: Scan): Promise<void> {
-  await (await db()).put("scans", scan);
-  await markUnbacked();
-  notifyChanged();
+export function putScan(scan: Scan): Promise<void> {
+  return save(() => data().putScan(scan));
 }
 
-export async function deleteScan(id: string): Promise<void> {
-  await (await db()).delete("scans", id);
-  await markUnbacked();
-  notifyChanged();
+export function deleteScan(id: string): Promise<void> {
+  return save(() => data().deleteScan(id));
 }
 
-/** น้ำหนักทั้งหมด เรียงจากวันเก่าไปใหม่ (key คือวันที่) */
-export async function getWeights(): Promise<WeightEntry[]> {
-  return (await db()).getAll("weights");
+/** น้ำหนักทั้งหมด เรียงจากวันเก่าไปใหม่ */
+export function getWeights(): Promise<WeightEntry[]> {
+  return data().getWeights();
 }
 
 /** บันทึกน้ำหนักของวัน (ชั่งซ้ำวันเดียวกัน = แทนค่าเดิม) */
-export async function putWeight(entry: WeightEntry): Promise<void> {
-  await (await db()).put("weights", entry);
-  await markUnbacked();
-  notifyChanged();
+export function putWeight(entry: WeightEntry): Promise<void> {
+  return save(() => data().putWeight(entry));
 }
 
-export async function deleteWeight(date: string): Promise<void> {
-  await (await db()).delete("weights", date);
-  await markUnbacked();
-  notifyChanged();
+export function deleteWeight(date: string): Promise<void> {
+  return save(() => data().deleteWeight(date));
+}
+
+export function getSettings(): Promise<Settings> {
+  return data().getSettings();
+}
+
+export function saveSettings(settings: Settings): Promise<void> {
+  return save(() => data().saveSettings({ ...settings, goalConfirmed: true }), { markUnbacked: false });
+}
+
+/** นำเข้าข้อมูลสำรอง: รวมกับของเดิม (id เดียวกัน = ใช้ของในไฟล์) และใช้การตั้งค่าจากไฟล์ */
+export async function importData(scans: Scan[], settings: Settings, weights: WeightEntry[]): Promise<void> {
+  const { unbackedSince } = await getSettings();
+  await save(() => data().importData(scans, { ...settings, unbackedSince, goalConfirmed: true }, weights), { markUnbacked: false });
 }
 
 /** ส่งออกไฟล์สำรองแล้ว → ไม่มีข้อมูลค้าง */
 export async function markBackedUp(): Promise<void> {
-  const database = await db();
-  const { unbackedSince: _done, ...rest } = { ...DEFAULT_SETTINGS, ...(await database.get("settings", SETTINGS_KEY)) };
-  await database.put("settings", rest, SETTINGS_KEY);
+  if (CLOUD_ENABLED) return;
+  const { unbackedSince: _done, ...rest } = await localCache().getSettings();
+  await localCache().saveSettings(rest);
   notifyChanged();
+}
+
+/** ออกจากระบบ: ลบสำเนาในเครื่อง ไม่ให้คนถัดไปที่ใช้เครื่องนี้เห็น */
+export async function clearLocalData(): Promise<void> {
+  await localCache().clear();
 }
 
 /** ขอให้เบราว์เซอร์ไม่ลบข้อมูลเองเมื่อพื้นที่เหลือน้อยหรือไม่ได้เปิดนาน */
 export async function requestPersistentStorage(): Promise<boolean> {
   if (!navigator.storage?.persist) return false;
   return (await navigator.storage.persisted()) || navigator.storage.persist();
-}
-
-export async function getAllScans(): Promise<Scan[]> {
-  return (await (await db()).getAll("scans")).sort(byCreatedAt);
-}
-
-/** นำเข้าข้อมูลสำรอง: รวมกับของเดิม (id เดียวกัน = ใช้ของในไฟล์) และใช้การตั้งค่าจากไฟล์ */
-export async function importData(scans: Scan[], settings: Settings, weights: WeightEntry[]): Promise<void> {
-  const { unbackedSince } = await getSettings();
-  const tx = (await db()).transaction(["scans", "settings", "weights"], "readwrite");
-  await Promise.all([
-    ...scans.map((scan) => tx.objectStore("scans").put(scan)),
-    ...weights.map((entry) => tx.objectStore("weights").put(entry)),
-    tx.objectStore("settings").put({ ...settings, unbackedSince, goalConfirmed: true }, SETTINGS_KEY),
-    tx.done,
-  ]);
-  notifyChanged();
-}
-
-export async function getSettings(): Promise<Settings> {
-  return { ...DEFAULT_SETTINGS, ...(await (await db()).get("settings", SETTINGS_KEY)) };
-}
-
-export async function saveSettings(settings: Settings): Promise<void> {
-  await (await db()).put("settings", { ...settings, goalConfirmed: true }, SETTINGS_KEY);
-  notifyChanged();
 }

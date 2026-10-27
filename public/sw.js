@@ -1,5 +1,5 @@
 // Service worker แบบง่าย: เปิดแอปได้แม้เน็ตหลุด (ยกเว้นการวิเคราะห์รูปที่ต้องใช้ Ollama)
-const CACHE = "calorie-check-v1";
+const CACHE = "calorie-check-v2";
 const PAGES = ["/", "/history", "/settings", "/scan"];
 
 self.addEventListener("install", (event) => {
@@ -41,6 +41,8 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((res) => {
+          // ถูกส่งไปหน้า login (ยังไม่ได้ล็อกอิน) → ให้เบราว์เซอร์ redirect เอง และไม่เก็บลง cache
+          if (res.redirected) return Response.redirect(res.url, 302);
           const copy = res.clone();
           caches.open(CACHE).then((cache) => cache.put(url.pathname, copy));
           return res;

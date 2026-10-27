@@ -7,7 +7,7 @@ import { frequentFoods, type FrequentFood } from "./recents";
 import type { DailyTotals } from "./stats";
 import type { Scan, Settings, WeightEntry } from "./types";
 
-/** โหลดข้อมูลจาก IndexedDB และโหลดใหม่เมื่อมีการบันทึก/ลบ */
+/** โหลดข้อมูล (cloud หรือในเครื่อง) และโหลดใหม่เมื่อมีการบันทึก/ลบ */
 function useDbQuery<T>(query: () => Promise<T>): T | undefined {
   const [data, setData] = useState<T>();
 
@@ -52,7 +52,7 @@ export function useFrequentFoods(today: string | undefined): FrequentFood[] | un
   const query = useCallback(async () => {
     if (!today) return [];
     const from = dateKey(addDays(parseDateKey(today), -30));
-    return frequentFoods(await getScansInRange(from, today));
+    return frequentFoods(await getScansInRange(from, today, { thumbnails: false }));
   }, [today]);
   return useDbQuery(query);
 }

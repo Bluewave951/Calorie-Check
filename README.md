@@ -1,7 +1,7 @@
 # Calorie&Check
 
 ถ่ายรูปอาหารแล้วให้ AI แยกแคลอรี่ทีละรายการ บันทึกเป็นมื้อรายวันเทียบกับเป้า
-เป็น PWA (Next.js + TypeScript) เปิดบนมือถือที่อยู่ Wi‑Fi เดียวกับคอมพิวเตอร์
+เป็น PWA (Next.js + TypeScript) รันบนคอมพิวเตอร์ในบ้าน หรือขึ้น Vercel + Supabase เพื่อใช้ได้ทุกที่และเก็บข้อมูลบน cloud
 
 - การออกแบบ: [../design.md](../design.md) · งาน: [../tasks.md](../tasks.md) · คำศัพท์: [../GLOSSARY.md](../GLOSSARY.md) · แผน: [../plan.md](../plan.md)
 - ต้นแบบหน้าตา (จาก Claude Design): [templates/calorie-check/](templates/calorie-check/) — แหล่งอ้างอิงของสี ฟอนต์ และโครงหน้า
@@ -85,14 +85,59 @@ Tailscale สร้างเครือข่ายส่วนตัวระ�
 - เพราะเป็น HTTPS แอปจึงติดตั้งแบบออฟไลน์ได้ (ดูประวัติได้แม้เน็ตไม่ดี แต่การสแกนต้องต่อถึงคอมพิวเตอร์)
 - ทุกคนใช้ API key เดียวกัน จึงใช้โควตาโมเดลฟรีร่วมกัน
 
+### ใช้ได้โดยไม่ต้องเปิดคอมพิวเตอร์ (Vercel + Supabase)
+
+เซิร์ฟเวอร์อยู่บน Vercel ข้อมูลอยู่บน Supabase แต่ละคนล็อกอินด้วยบัญชี Google เปลี่ยนมือถือก็ล็อกอินแล้วเห็นข้อมูลเดิม
+ใช้แผนฟรีของทั้งสองได้ และใช้ AI ได้เฉพาะ **OpenRouter** (Ollama รันบนคลาวด์ไม่ได้)
+
+**1. Supabase (ฐานข้อมูล)**
+
+1. สมัคร https://supabase.com → **New project** (Region เลือก Singapore จะเร็วที่สุด)
+2. เมนู **SQL Editor** → วางเนื้อหาทั้งไฟล์ [`supabase/schema.sql`](supabase/schema.sql) → **Run**
+3. จดค่า **Project URL** และ **Publishable key** (Project Settings → API Keys / Data API)
+
+**2. ล็อกอินด้วย Google**
+
+1. https://console.cloud.google.com → สร้างโปรเจกต์ → **APIs & Services → OAuth consent screen** ตั้งชื่อแอป (User type: External)
+2. **Credentials → Create credentials → OAuth client ID** → ชนิด *Web application*
+   - Authorized redirect URIs: `https://<project-ref>.supabase.co/auth/v1/callback` (ดูได้ในหน้าตั้งค่า Google ของ Supabase)
+3. Supabase → **Authentication → Sign In / Providers → Google** → เปิด แล้ววาง Client ID และ Client Secret
+4. Supabase → **Authentication → URL Configuration**
+   - Site URL: `https://<ชื่อโปรเจกต์>.vercel.app`
+   - Redirect URLs: เพิ่ม `https://<ชื่อโปรเจกต์>.vercel.app/auth/callback` (ถ้าจะลองบนเครื่องเพิ่ม `http://localhost:3000/auth/callback`)
+
+**3. Vercel (เซิร์ฟเวอร์)**
+
+1. สมัคร https://vercel.com ด้วยบัญชี GitHub → **Add New → Project** → เลือก repo ของแอปนี้
+2. ก่อนกด Deploy เปิด **Environment Variables** แล้วใส่
+
+   | ชื่อ | ค่า |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | Project URL จาก Supabase |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key จาก Supabase |
+   | `ALLOWED_EMAILS` | อีเมล Google ของคนในครอบครัว คั่นด้วย `,` |
+   | `AI_PROVIDER` | `openrouter` |
+   | `OPENROUTER_API_KEY` | key จาก https://openrouter.ai/keys |
+   | `OPENROUTER_MODEL` | `google/gemma-4-31b-it:free` |
+
+3. กด **Deploy** → เปิด `https://<ชื่อโปรเจกต์>.vercel.app` บนมือถือ → **เข้าสู่ระบบด้วย Google** → กด “เพิ่มลงหน้าจอโฮม”
+4. ต่อจากนี้ทุกครั้งที่ `git push` ขึ้น GitHub Vercel จะ deploy ให้อัตโนมัติ
+
+- **เพิ่ม/ลบคนในครอบครัว**: แก้ `ALLOWED_EMAILS` ใน Vercel → Settings → Environment Variables แล้ว Redeploy
+- คนที่อีเมลไม่อยู่ในรายชื่อ ล็อกอิน Google ได้แต่จะเห็นข้อความว่า “ยังไม่ได้รับอนุญาต” และเรียก AI ไม่ได้
+- ถ้าเปลี่ยนชื่อโปรเจกต์หรือผูกโดเมนเอง ต้องแก้ Site URL / Redirect URLs ใน Supabase ให้ตรงด้วย
+
 ## ข้อมูลของแต่ละคนและการสำรอง
 
-- ประวัติ เป้าแคลอรี่ โมเดล และธีมที่เลือก **เก็บแยกในมือถือของแต่ละคน** ไม่ปนกัน
-- ข้อมูลอยู่ในเบราว์เซอร์เท่านั้น ถ้าล้างข้อมูลเบราว์เซอร์ ลบแอป หรือเปลี่ยนเครื่อง **ข้อมูลจะหาย**
+- **ตั้งค่า Supabase แล้ว**: ประวัติ น้ำหนัก เป้าแคลอรี่ และโมเดลที่เลือก เก็บบน cloud แยกตามบัญชี Google (Row Level Security ทำให้เห็นเฉพาะของตัวเอง)
+  - มือถือเก็บสำเนาไว้ด้วย **เน็ตหลุดยังเปิดดูได้** แต่การบันทึก/แก้/ลบ ต้องต่อเน็ต (แอปจะแจ้งถ้าบันทึกไม่สำเร็จ)
+  - **ออกจากระบบ** (ตั้งค่า → บัญชี) จะลบสำเนาในเครื่องนั้นด้วย
+- **ไม่ได้ตั้งค่า Supabase**: ข้อมูลอยู่ในเบราว์เซอร์ของเครื่องนั้นเท่านั้น ถ้าล้างข้อมูลเบราว์เซอร์ ลบแอป หรือเปลี่ยนเครื่อง **ข้อมูลจะหาย** แนะนำส่งออกสัปดาห์ละครั้ง
+- ธีมที่เลือก จำไว้ในแต่ละเครื่องเสมอ
 - หน้า **ตั้งค่า → สำรองข้อมูล**
   - **ส่งออก**: ได้ไฟล์ `calorie-check-backup-ปี-เดือน-วัน.json` (บนมือถือจะเปิดเมนูแชร์ให้บันทึกลง Files / Google Drive / LINE Keep)
   - **นำเข้า**: เลือกไฟล์สำรอง แอปจะสรุปจำนวนการสแกนให้ยืนยันก่อน แล้วรวมกับข้อมูลเดิม (การสแกนเดียวกันใช้ของในไฟล์) และใช้เป้าแคลอรี่จากไฟล์
-- แนะนำส่งออกสัปดาห์ละครั้ง และก่อนเปลี่ยนมือถือ
+- **ย้ายข้อมูลจากแอปเดิม (ที่รันบนคอมพิวเตอร์) ขึ้น cloud**: เปิดแอปเดิม → ส่งออก → เปิดแอปบน Vercel แล้วล็อกอิน → นำเข้า (ทำครั้งเดียวต่อคน)
 - ไฟล์สำรองมีรูปย่ออาหารและประวัติการกิน ควรเก็บเป็นส่วนตัว
 
 ## หน้าตาและธีม
@@ -115,6 +160,9 @@ Tailscale สร้างเครือข่ายส่วนตัวระ�
 | `OLLAMA_URL` | `http://localhost:11434` | ที่อยู่ของ Ollama |
 | `OLLAMA_MODEL` | `qwen2.5vl:3b` | โมเดลเริ่มต้นของ Ollama |
 | `AI_MOCK` | `0` | `1` = ใช้ผลจำลอง |
+| `NEXT_PUBLIC_SUPABASE_URL` | – | Project URL ของ Supabase (ว่าง = เก็บข้อมูลในเครื่องอย่างเดียว ไม่ต้องล็อกอิน) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | – | Publishable key ของ Supabase |
+| `ALLOWED_EMAILS` | – | อีเมล Google ที่ใช้แอปได้ คั่นด้วย `,` (ว่าง = ไม่มีใครเข้าได้) |
 
 หลังแก้ `.env.local` ต้องปิดแล้วรันแอปใหม่
 
@@ -129,7 +177,8 @@ npm run build
 ## ข้อควรรู้
 
 - ค่าแคลอรี่เป็น **ค่าประมาณ** (คลาด ±20–30% ได้) รายการที่จับคู่กับตารางเมนูอ้างอิง (`src/data/thai-foods.json`) ได้จะใช้ตัวเลขจากตาราง ส่วนรายการที่ไม่ตรงจะมีป้าย “ประมาณการ” และใช้ตัวเลขที่ AI เดา
-- ประวัติ รูปย่อ และเป้า เก็บใน IndexedDB ของเบราว์เซอร์แต่ละเครื่อง ไม่มีฐานข้อมูลบนเซิร์ฟเวอร์ (สำรองได้จากหน้าตั้งค่า)
+- ข้อมูลเก็บบน Supabase (ตั้งค่าแล้ว) พร้อมสำเนาใน IndexedDB ไว้ดูตอนออฟไลน์ หรือเก็บใน IndexedDB อย่างเดียว (ไม่ได้ตั้งค่า) — โค้ดอยู่ที่ `src/lib/db.ts` → `store.ts` (cloud + สำเนา), `cloudStore.ts` (Supabase), `localCache.ts` (IndexedDB)
+- ล็อกอินและสิทธิ์: `src/proxy.ts` ตรวจ session ของ Supabase และ `ALLOWED_EMAILS` ทุกคำขอ ส่วนตารางใน Supabase ใช้ Row Level Security
 - API key อยู่ฝั่งเซิร์ฟเวอร์เท่านั้น มือถือเรียกผ่าน `/api/analyze` จึงไม่เห็น key
 - การติดตั้งเป็นแอปแบบออฟไลน์ (service worker) ใช้ได้บน `localhost` หรือ HTTPS เท่านั้น เมื่อเปิดผ่าน `http://<IP>` แอปยังใช้งานได้ตามปกติ
 - npm scripts เรียก `node node_modules/...` โดยตรง เพราะเครื่องหมาย `&` ในชื่อโฟลเดอร์ทำให้ไฟล์ `.cmd` ของ npm บน Windows ทำงานผิด
