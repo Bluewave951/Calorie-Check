@@ -47,8 +47,11 @@ describe("proxy", () => {
     const twoAllowed = await proxyFor("stranger@gmail.com")(request("/"));
     expect(new URL(twoAllowed.headers.get("location") ?? "").searchParams.get("allowed")).toBe("2");
 
-    const noneSet = await proxyFor("stranger@gmail.com", "")(request("/"));
-    expect(new URL(noneSet.headers.get("location") ?? "").searchParams.get("allowed")).toBe("0");
+  });
+
+  it("ไม่ได้ตั้ง ALLOWED_EMAILS → ทุกบัญชีที่ล็อกอินได้ผ่าน (บัญชีสร้างโดยผู้ดูแลเท่านั้น)", async () => {
+    const res = await proxyFor("mom@family.local", "")(request("/api/analyze"));
+    expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("อีเมลที่อนุญาต → ปล่อยผ่าน พร้อม cookie ที่ต่ออายุแล้ว", async () => {

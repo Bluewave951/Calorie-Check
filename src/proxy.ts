@@ -34,7 +34,7 @@ export function createProxy({ allowedEmails, resolveSession }: ProxyOptions) {
       const url = new URL("/login", request.url);
       if (access === "not_allowed") {
         url.searchParams.set("error", "not_allowed");
-        // จำนวนอย่างเดียว (ไม่บอกอีเมล): 0 = Vercel ยังไม่ได้ส่ง ALLOWED_EMAILS ให้แอป เช่น ลืม Redeploy
+        // บอกแค่จำนวน (ไม่บอกอีเมล) ไว้เทียบกับค่าที่ตั้งใน Vercel
         url.searchParams.set("allowed", String(allowed.length));
       } else url.searchParams.set("next", pathname + search);
       return withCookies(NextResponse.redirect(url), response);
@@ -46,7 +46,7 @@ export function createProxy({ allowedEmails, resolveSession }: ProxyOptions) {
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-/** ตั้งค่า Supabase แล้วทุกหน้าต้องล็อกอิน (รหัสทางอีเมล) และอีเมลต้องอยู่ใน ALLOWED_EMAILS */
+/** ตั้งค่า Supabase แล้วทุกหน้าต้องล็อกอิน (บัญชีที่ผู้ดูแลสร้าง) และถ้าตั้ง ALLOWED_EMAILS อีเมลต้องอยู่ในรายชื่อด้วย */
 export const proxy = createProxy({
   allowedEmails: process.env.ALLOWED_EMAILS,
   resolveSession: url && key ? (request) => resolveSupabaseSession(request, url, key) : null,

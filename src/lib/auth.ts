@@ -1,20 +1,25 @@
 /**
- * กฎการเข้าแอป: ล็อกอินด้วยรหัสทางอีเมล (Supabase Auth) และอีเมลต้องอยู่ใน ALLOWED_EMAILS
- * ไม่จำกัดอีเมล = ใครมีอีเมลก็สมัครเข้ามาใช้โควตา AI ได้
+ * กฎการเข้าแอป: ผู้ดูแลสร้างบัญชี (อีเมล/ชื่อผู้ใช้ + รหัสผ่าน) ใน Supabase ให้แต่ละคน แล้วปิดการสมัครเอง
+ * ALLOWED_EMAILS ไม่บังคับ: ตั้งไว้ = จำกัดเพิ่มอีกชั้นเฉพาะอีเมลในรายชื่อ
  */
+
+/** โดเมนสมมติของบัญชีที่ใช้ชื่อผู้ใช้แทนอีเมลจริง เช่น mom → mom@family.local */
+export const LOGIN_DOMAIN = "family.local";
 
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/** ตรวจรูปแบบคร่าว ๆ ก่อนส่งรหัส (Supabase ตรวจซ้ำอีกชั้น) */
+/** ตรวจรูปแบบคร่าว ๆ ก่อนส่งไป Supabase (Supabase ตรวจซ้ำอีกชั้น) */
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-/** รหัสในอีเมลจาก Supabase: ตัวเลข 6 หลักโดยปกติ (ตั้งได้ถึง 10) */
-export function isValidOtpCode(value: string): boolean {
-  return /^\d{6,10}$/.test(value);
+/** ช่อง "อีเมลหรือชื่อผู้ใช้" → อีเมลที่ใช้ล็อกอิน */
+export function toLoginEmail(value: string): string {
+  const email = normalizeEmail(value);
+  if (email === "" || email.includes("@")) return email;
+  return `${email}@${LOGIN_DOMAIN}`;
 }
 
 /**
@@ -45,6 +50,6 @@ export function decideAccess({ pathname, email, allowed }: { pathname: string; e
   if (PUBLIC_PATHS.has(pathname)) return "allow";
   const isApi = pathname.startsWith("/api/");
   if (email === undefined) return isApi ? "unauthorized" : "login";
-  if (!isEmailAllowed(email, allowed)) return isApi ? "forbidden" : "not_allowed";
+  if (allowed.length > 0 && !isEmailAllowed(email, allowed)) return isApi ? "forbidden" : "not_allowed";
   return "allow";
 }

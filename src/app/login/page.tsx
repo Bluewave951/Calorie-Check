@@ -1,21 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LoaderCircle } from "lucide-react";
-import { isValidEmail, isValidOtpCode, normalizeEmail, safeNextPath } from "@/lib/auth";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { isValidEmail, safeNextPath, toLoginEmail } from "@/lib/auth";
 import { CLOUD_ENABLED, getSupabase } from "@/lib/supabase/client";
 
-const NOT_ALLOWED_TEXT = "อีเมลนี้ยังไม่ได้รับอนุญาตให้ใช้แอป ลองอีเมลอื่น หรือขอให้ผู้ดูแลเพิ่มอีเมลของคุณ";
+const NOT_ALLOWED_TEXT = "บัญชีนี้ยังไม่ได้รับอนุญาตให้ใช้แอป ขอให้ผู้ดูแลเพิ่มอีเมลของคุณใน ALLOWED_EMAILS";
 
 const inputClass = "mt-1.5 min-h-12 w-full rounded-xl border border-border bg-bg px-4 text-lg outline-none focus:border-primary";
-const buttonClass =
-  "pressable mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent font-semibold text-on-accent hover:opacity-90 disabled:opacity-40";
 
-/** ล็อกอินด้วยรหัสที่ส่งไปทางอีเมล (Supabase Auth) — ไม่ต้องจำรหัสผ่าน */
+/** ล็อกอินด้วยบัญชีที่ผู้ดูแลสร้างใน Supabase (อีเมลหรือชื่อผู้ใช้ + รหัสผ่าน) — ไม่มีหน้าสมัครเอง */
 export default function LoginPage() {
-  const [step, setStep] = useState<"email" | "code">("email");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -23,52 +21,31 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("error") !== "not_allowed") return;
     setError(NOT_ALLOWED_TEXT);
-    // บอกอีเมลที่ล็อกอินอยู่ และจำนวนใน ALLOWED_EMAILS ที่เซิร์ฟเวอร์อ่านได้ ให้เทียบกับค่าใน Vercel ได้ง่าย
+    // บอกบัญชีที่ล็อกอินอยู่ และจำนวนใน ALLOWED_EMAILS ที่เซิร์ฟเวอร์อ่านได้ ให้เทียบกับค่าใน Vercel ได้ง่าย
     getSupabase()
       .auth.getUser()
       .then(({ data }) => {
-        const count = params.get("allowed");
         const lines = [NOT_ALLOWED_TEXT, `ล็อกอินอยู่ด้วย: ${data.user?.email ?? "ไม่ทราบ"}`];
-        if (count !== null) {
-          lines.push(count === "0" ? "เซิร์ฟเวอร์ยังไม่เห็นค่า ALLOWED_EMAILS (ตั้งแล้วต้อง Redeploy)" : `ALLOWED_EMAILS ที่เซิร์ฟเวอร์อ่านได้: ${count} อีเมล`);
-        }
+        const count = params.get("allowed");
+        if (count !== null) lines.push(`ALLOWED_EMAILS ที่เซิร์ฟเวอร์อ่านได้: ${count} อีเมล`);
         setError(lines.join("\n"));
       })
       .catch(() => {});
   }, []);
 
-  const sendCode = async (event: React.FormEvent) => {
+  const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
-    const address = normalizeEmail(email);
-    if (!isValidEmail(address)) return setError("รูปแบบอีเมลไม่ถูกต้อง");
+    const email = toLoginEmail(identifier);
+    if (!isValidEmail(email)) return setError("กรอกอีเมลหรือชื่อผู้ใช้ให้ถูกต้อง");
     setBusy(true);
     setError(null);
-    const supabase = getSupabase();
-    // ล็อกอินด้วยอีเมลที่ไม่ได้รับอนุญาตค้างอยู่ → ออกก่อน
-    await supabase.auth.signOut().catch(() => {});
-    const { error: sendError } = await supabase.auth.signInWithOtp({ email: address, options: { shouldCreateUser: true } });
-    setBusy(false);
-    if (sendError) {
-      setError(sendError.status === 429 ? "ขอรหัสบ่อยเกินไป รอสักครู่แล้วลองใหม่" : "ส่งรหัสไม่สำเร็จ ตรวจอีเมลแล้วลองใหม่");
-      return;
-    }
-    setEmail(address);
-    setCode("");
-    setStep("code");
-  };
-
-  const verify = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!isValidOtpCode(code)) return setError("กรอกรหัสตัวเลขจากอีเมลให้ครบ");
-    setBusy(true);
-    setError(null);
-    const { error: verifyError } = await getSupabase().auth.verifyOtp({ email, token: code, type: "email" });
-    if (verifyError) {
+    const { error: signInError } = await getSupabase().auth.signInWithPassword({ email, password });
+    if (signInError) {
       setBusy(false);
-      setError("รหัสไม่ถูกต้องหรือหมดอายุ ลองใหม่ หรือขอรหัสใหม่");
+      setError(signInError.status === 429 ? "ลองหลายครั้งเกินไป รอสักครู่แล้วลองใหม่" : "อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง");
       return;
     }
-    // โหลดใหม่ทั้งหน้า เพื่อให้ proxy เห็น cookie ของ session (อีเมลไม่ได้รับอนุญาต → กลับมาหน้านี้พร้อมข้อความ)
+    // โหลดใหม่ทั้งหน้า เพื่อให้ proxy เห็น cookie ของ session
     window.location.replace(safeNextPath(new URLSearchParams(window.location.search).get("next")));
   };
 
@@ -79,78 +56,66 @@ export default function LoginPage() {
 
       {!CLOUD_ENABLED ? (
         <p className="card p-4 text-sm text-muted">ยังไม่ได้ตั้งค่า Supabase แอปจึงเก็บข้อมูลในเครื่องนี้และไม่ต้องล็อกอิน</p>
-      ) : step === "email" ? (
-        <form onSubmit={sendCode} className="card p-4" noValidate>
-          <label htmlFor="email" className="text-sm font-medium">
-            อีเมล
+      ) : (
+        <form onSubmit={signIn} className="card p-4" noValidate>
+          <label htmlFor="identifier" className="text-sm font-medium">
+            อีเมลหรือชื่อผู้ใช้
           </label>
           <input
-            id="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
+            id="identifier"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             aria-invalid={error !== null}
-            aria-describedby={error ? "login-error" : "email-help"}
+            aria-describedby={error ? "login-error" : undefined}
             className={inputClass}
           />
-          <p id="email-help" className="mt-1.5 text-sm text-muted">
-            เราจะส่งรหัสตัวเลขไปที่อีเมลนี้
-          </p>
-          <ErrorText error={error} />
-          <button type="submit" disabled={busy || email.trim() === ""} className={buttonClass}>
-            {busy && <LoaderCircle aria-hidden className="size-5 animate-spin" />}
-            ส่งรหัสเข้าอีเมล
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={verify} className="card p-4" noValidate>
-          <label htmlFor="code" className="text-sm font-medium">
-            รหัสจากอีเมล
+
+          <label htmlFor="password" className="mt-4 block text-sm font-medium">
+            รหัสผ่าน
           </label>
-          <input
-            id="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            maxLength={10}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            aria-invalid={error !== null}
-            aria-describedby={error ? "login-error" : "code-help"}
-            className={`${inputClass} text-center text-2xl tracking-[0.3em] tabular-nums`}
-          />
-          <p id="code-help" className="mt-1.5 text-sm text-muted">
-            ส่งไปที่ <span className="font-medium text-text">{email}</span> แล้ว (ถ้าไม่เห็น ลองดูในจดหมายขยะ)
-          </p>
-          <ErrorText error={error} />
-          <button type="submit" disabled={busy || code.length === 0} className={buttonClass}>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={error !== null}
+              aria-describedby={error ? "login-error" : undefined}
+              className={`${inputClass} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+              aria-pressed={showPassword}
+              className="absolute right-1 top-1/2 flex size-11 -translate-y-[calc(50%-3px)] items-center justify-center rounded-xl text-muted hover:bg-surface-2"
+            >
+              {showPassword ? <EyeOff aria-hidden className="size-5" /> : <Eye aria-hidden className="size-5" />}
+            </button>
+          </div>
+
+          {error && (
+            <p id="login-error" role="alert" className="mt-3 whitespace-pre-line rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn-text">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={busy || identifier.trim() === "" || password === ""}
+            className="pressable mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent font-semibold text-on-accent hover:opacity-90 disabled:opacity-40"
+          >
             {busy && <LoaderCircle aria-hidden className="size-5 animate-spin" />}
             เข้าสู่ระบบ
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setStep("email");
-              setError(null);
-            }}
-            className="pressable mt-2 min-h-11 w-full rounded-xl text-sm font-semibold text-muted hover:bg-surface-2"
-          >
-            เปลี่ยนอีเมล / ขอรหัสใหม่
-          </button>
+          <p className="mt-3 text-center text-sm text-muted">ยังไม่มีบัญชี หรือลืมรหัสผ่าน ติดต่อผู้ดูแลแอป</p>
         </form>
       )}
     </main>
-  );
-}
-
-function ErrorText({ error }: { error: string | null }) {
-  if (!error) return null;
-  return (
-    <p id="login-error" role="alert" className="mt-2 whitespace-pre-line rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn-text">
-      {error}
-    </p>
   );
 }

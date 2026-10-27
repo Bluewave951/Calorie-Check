@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideAccess, isEmailAllowed, isValidEmail, isValidOtpCode, normalizeEmail, parseAllowedEmails, safeNextPath } from "./auth";
+import { decideAccess, isEmailAllowed, isValidEmail, LOGIN_DOMAIN, normalizeEmail, parseAllowedEmails, safeNextPath, toLoginEmail } from "./auth";
 
 describe("normalizeEmail / isValidEmail", () => {
   it("ตัดช่องว่างและเปลี่ยนเป็นตัวพิมพ์เล็ก", () => {
@@ -14,13 +14,18 @@ describe("normalizeEmail / isValidEmail", () => {
   });
 });
 
-describe("isValidOtpCode", () => {
-  it("รับตัวเลข 6–10 หลัก (Supabase ตั้งความยาวรหัสได้)", () => {
-    expect(isValidOtpCode("123456")).toBe(true);
-    expect(isValidOtpCode("12345678")).toBe(true);
-    for (const value of ["", "12345", "12345a", "1234567890123", " 123456"]) {
-      expect(isValidOtpCode(value)).toBe(false);
-    }
+describe("toLoginEmail", () => {
+  it("กรอกอีเมล → ใช้อีเมลนั้น (ตัดช่องว่าง ตัวพิมพ์เล็ก)", () => {
+    expect(toLoginEmail(" Mom@Gmail.com ")).toBe("mom@gmail.com");
+  });
+
+  it("กรอกชื่อผู้ใช้ (ไม่มี @) → เติมโดเมนสมมติที่ผู้ดูแลใช้สร้างบัญชี", () => {
+    expect(toLoginEmail(" Mom ")).toBe(`mom@${LOGIN_DOMAIN}`);
+    expect(isValidEmail(toLoginEmail("dad"))).toBe(true);
+  });
+
+  it("ค่าว่าง → ว่าง", () => {
+    expect(toLoginEmail("   ")).toBe("");
   });
 });
 
@@ -91,6 +96,12 @@ describe("decideAccess", () => {
   it("ล็อกอินด้วยอีเมลที่อนุญาต → เปิดได้ทุกหน้า", () => {
     expect(decideAccess({ pathname: "/", email: "mom@gmail.com", allowed })).toBe("allow");
     expect(decideAccess({ pathname: "/api/analyze", email: "mom@gmail.com", allowed })).toBe("allow");
+  });
+
+  it("ไม่ได้ตั้ง ALLOWED_EMAILS → ทุกบัญชีที่ล็อกอินได้เข้าได้ (ผู้ดูแลสร้างบัญชีเอง และปิดการสมัครใน Supabase)", () => {
+    expect(decideAccess({ pathname: "/", email: "anyone@family.local", allowed: [] })).toBe("allow");
+    expect(decideAccess({ pathname: "/api/analyze", email: "anyone@family.local", allowed: [] })).toBe("allow");
+    expect(decideAccess({ pathname: "/", email: undefined, allowed: [] })).toBe("login");
   });
 
   it("path ที่ขึ้นต้นเหมือนแต่ไม่ใช่หน้า public ยังต้องล็อกอิน", () => {
