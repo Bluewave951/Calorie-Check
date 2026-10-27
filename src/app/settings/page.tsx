@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, LoaderCircle, TriangleAlert } from "lucide-react";
 import { AccountSection } from "@/components/AccountSection";
 import { BackupSection } from "@/components/BackupSection";
+import { ReminderSection } from "@/components/ReminderSection";
 import { TdeeCalculator } from "@/components/TdeeCalculator";
 import { ThemeSection } from "@/components/ThemeSection";
 import { saveSettings } from "@/lib/db";
@@ -242,6 +243,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-semibold">ตั้งค่า</h1>
       {CLOUD_ENABLED && <AccountSection />}
       <GoalSection initial={settings} />
+      <ReminderSection settings={settings} />
       <section aria-labelledby="backup-title">
         <SectionTitle
           id="backup-title"

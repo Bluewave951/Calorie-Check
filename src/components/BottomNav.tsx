@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Plus, Settings, Sun } from "lucide-react";
+import { CalendarDays, Plus, Settings, Sun, TrendingDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AddFoodSheet } from "./AddFoodSheet";
 import { onOpenAddSheet, openAddSheet, type AddSheetRequest } from "@/lib/addSheet";
@@ -18,6 +18,7 @@ interface Tab {
 const TABS: Tab[] = [
   { href: "/", label: "วันนี้", labelEn: "Today", Icon: Sun },
   { href: "/history", label: "ประวัติ", labelEn: "History", Icon: CalendarDays },
+  { href: "/program", label: "โปรแกรม", labelEn: "Program", Icon: TrendingDown },
   { href: "/settings", label: "ตั้งค่า", labelEn: "Settings", Icon: Settings },
 ];
 
@@ -25,7 +26,7 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-/** แถบเมนูล่าง 3 ช่องเท่ากัน + ปุ่มลอย "บันทึกอาหาร" + แผ่นเลือกวิธีบันทึก */
+/** แถบเมนูล่าง 4 ช่องเท่ากัน + ปุ่มลอย "บันทึกอาหาร" + แผ่นเลือกวิธีบันทึก */
 export function BottomNav() {
   const pathname = usePathname();
   const [sheet, setSheet] = useState<AddSheetRequest | null>(null);
@@ -52,7 +53,7 @@ export function BottomNav() {
       )}
 
       <nav aria-label="เมนูหลัก" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto grid max-w-[430px] grid-cols-3">
+        <div className="mx-auto grid max-w-[430px] grid-cols-4">
           {TABS.map((tab) => {
             const active = isActive(pathname, tab.href);
             return (

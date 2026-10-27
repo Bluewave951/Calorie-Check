@@ -1,6 +1,6 @@
 // Service worker แบบง่าย: เปิดแอปได้แม้เน็ตหลุด (ยกเว้นการวิเคราะห์รูปที่ต้องใช้ Ollama)
-const CACHE = "calorie-check-v2";
-const PAGES = ["/", "/history", "/settings", "/scan"];
+const CACHE = "calorie-check-v3";
+const PAGES = ["/", "/history", "/program", "/settings", "/scan"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PAGES)).then(() => self.skipWaiting()));

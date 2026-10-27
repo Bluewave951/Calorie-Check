@@ -48,7 +48,7 @@ export function calculateTdee(profile: BodyProfile): TdeeResult | null {
 
 /** เป้าแคลอรี่ขั้นต่ำที่ไม่ควรต่ำกว่าโดยไม่มีผู้เชี่ยวชาญดูแล (ไม่ทราบเพศ = ค่าที่ต่ำกว่า) */
 export const SAFE_MIN_GOAL: Record<Sex, number> = { female: 1200, male: 1500 };
-const UNDERWEIGHT_BMI = 18.5;
+export const UNDERWEIGHT_BMI = 18.5;
 
 export type GoalWarning = "below_minimum" | "underweight_losing";
 

@@ -6,6 +6,8 @@ import { ChevronRight, Plus, ShieldAlert, Target } from "lucide-react";
 import { CalorieRing } from "@/components/CalorieRing";
 import { DayList } from "@/components/DayList";
 import { MacroBars } from "@/components/MacroBars";
+import { ProgramLink } from "@/components/ProgramLink";
+import { ReminderBanner } from "@/components/ReminderBanner";
 import { WeightCard } from "@/components/WeightCard";
 import { backupReminder } from "@/lib/backup";
 import { formatKcal, formatThaiDate, greeting } from "@/lib/format";
@@ -46,6 +48,7 @@ export default function HomePage() {
   if (!now || !today || !settings || !scans) return <Skeleton />;
   const unbackedDays = backupReminder(settings.unbackedSince, now.getTime());
   const { unknown, ...macros } = sumMacros(scans.flatMap((scan) => scan.items));
+  const eaten = sumScans(scans);
 
   return (
     <main className="flex flex-col gap-[18px]">
@@ -77,8 +80,10 @@ export default function HomePage() {
         </Link>
       )}
 
+      <ReminderBanner eaten={eaten} goal={settings.dailyGoal} now={now} reminder={settings.reminder} />
+
       <section aria-label="แคลอรี่วันนี้" className="card flex flex-col gap-4 px-4 pb-5 pt-6">
-        <CalorieRing eaten={sumScans(scans)} goal={settings.dailyGoal} />
+        <CalorieRing eaten={eaten} goal={settings.dailyGoal} />
         {scans.length > 0 && <MacroBars eaten={macros} target={macroTargets(settings.dailyGoal, settings.profile)} unknown={unknown} />}
       </section>
 
@@ -109,6 +114,8 @@ export default function HomePage() {
       </section>
 
       {weights && <WeightCard entries={weights} today={today} profile={settings.profile} />}
+
+      {weights && <ProgramLink program={settings.program} weights={weights} today={today} />}
 
       {scans.length === 0 && (
         <p className="px-2 text-center text-sm text-muted">ยังไม่มีบันทึกวันนี้ · กด “บันทึกอาหาร” ด้านล่างเพื่อเริ่ม</p>
