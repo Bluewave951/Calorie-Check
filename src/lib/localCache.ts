@@ -78,6 +78,10 @@ export function createIdbCache(name = "calorie-check"): LocalCache {
       await (await db()).delete("exercises", id);
     },
     getSettings: async () => ({ ...DEFAULT_SETTINGS, ...(await (await db()).get("settings", SETTINGS_KEY)) }),
+    getStoredSettings: async () => {
+      const stored = await (await db()).get("settings", SETTINGS_KEY);
+      return stored && { ...DEFAULT_SETTINGS, ...stored };
+    },
     saveSettings: async (settings) => {
       await (await db()).put("settings", settings, SETTINGS_KEY);
     },

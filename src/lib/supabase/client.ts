@@ -1,12 +1,9 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// ต้องเขียนชื่อเต็ม process.env.NEXT_PUBLIC_... เพื่อให้ Next.js ฝังค่าลงโค้ดฝั่งเบราว์เซอร์
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-export const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
+import { SUPABASE_KEY, SUPABASE_URL } from "./config";
 
-/** ไม่ได้ตั้งค่า Supabase = เก็บข้อมูลในเครื่องอย่างเดียว และไม่ต้องล็อกอิน (แบบเดิม) */
-export const CLOUD_ENABLED = SUPABASE_URL !== "" && SUPABASE_KEY !== "";
+export { CLOUD_ENABLED } from "./config";
 
 let client: SupabaseClient | null = null;
 

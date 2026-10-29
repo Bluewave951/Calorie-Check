@@ -1,7 +1,14 @@
-import { dateKey } from "./nutrition";
+import { dateKey, sumItems } from "./nutrition";
+import type { Scan } from "./types";
 
 /** ยอด kcal ต่อวัน: { "2026-10-26": 1850 } (วันที่ไม่มีการสแกน = ไม่มี key) */
 export type DailyTotals = Record<string, number>;
+
+export function dailyTotals(scans: Scan[]): DailyTotals {
+  const totals: DailyTotals = {};
+  for (const scan of scans) totals[scan.date] = (totals[scan.date] ?? 0) + sumItems(scan.items);
+  return totals;
+}
 
 export interface PeriodSummary {
   /** จำนวนวันที่มีการบันทึก */

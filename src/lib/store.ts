@@ -42,6 +42,8 @@ export interface LocalCache extends DataStore {
   replaceExercisesByDate(date: string, entries: ExerciseEntry[]): Promise<void>;
   replaceExercisesInRange(from: string, to: string, entries: ExerciseEntry[]): Promise<void>;
   replaceAllExercises(entries: ExerciseEntry[]): Promise<void>;
+  /** การตั้งค่าที่บันทึกไว้จริง (undefined = ยังไม่เคยบันทึก ต่างจาก getSettings ที่เติมค่าเริ่มต้นให้) */
+  getStoredSettings(): Promise<Settings | undefined>;
   clear(): Promise<void>;
 }
 
@@ -188,12 +190,89 @@ export function createCachedStore(remote: DataStore, cache: LocalCache, isOnline
   };
 }
 
+const WRITES = new Set<keyof DataStore>([
+  "putScan",
+  "deleteScan",
+  "putWeight",
+  "deleteWeight",
+  "putExercise",
+  "deleteExercise",
+  "saveSettings",
+  "importData",
+]);
+
+/**
+ * โหลดโค้ดที่เก็บข้อมูล (เช่น Supabase SDK ที่ใหญ่) เมื่อใช้ข้อมูลครั้งแรก ไม่ให้หน้าจอต้องรอโหลดก่อนแสดงผล
+ * โหลดไม่ได้ (เน็ตหลุด): อ่าน = ใช้สำเนาในเครื่อง, บันทึก = SaveError offline, ครั้งถัดไปลองโหลดใหม่
+ */
+export function createLazyStore(load: () => Promise<DataStore>, fallback: LocalCache): DataStore {
+  let pending: Promise<DataStore> | null = null;
+
+  function get(): Promise<DataStore> {
+    pending ??= load().catch((error: unknown) => {
+      pending = null;
+      throw error;
+    });
+    return pending;
+  }
+
+  function method<K extends keyof DataStore>(name: K): DataStore[K] {
+    const call = async (...args: unknown[]) => {
+      let store: DataStore;
+      try {
+        store = await get();
+      } catch (error) {
+        if (WRITES.has(name)) throw new SaveError(true, { cause: error });
+        store = fallback;
+      }
+      return (store[name] as (...a: unknown[]) => Promise<unknown>)(...args);
+    };
+    return call as DataStore[K];
+  }
+
+  return {
+    getScansByDate: method("getScansByDate"),
+    getScansInRange: method("getScansInRange"),
+    getScan: method("getScan"),
+    getAllScans: method("getAllScans"),
+    putScan: method("putScan"),
+    deleteScan: method("deleteScan"),
+    getWeights: method("getWeights"),
+    putWeight: method("putWeight"),
+    deleteWeight: method("deleteWeight"),
+    getExercisesByDate: method("getExercisesByDate"),
+    getAllExercises: method("getAllExercises"),
+    getExercisesInRange: method("getExercisesInRange"),
+    putExercise: method("putExercise"),
+    deleteExercise: method("deleteExercise"),
+    getSettings: method("getSettings"),
+    saveSettings: method("saveSettings"),
+    importData: method("importData"),
+  };
+}
+
+/** undefined = สำเนาไม่มีข้อมูล → อย่าแสดงว่า "ว่าง" ให้รอ cloud */
+const nonEmpty = <T>(items: T[]): T[] | undefined => (items.length ? items : undefined);
+
+/** อ่านสำเนาในเครื่องไว้แสดงก่อนระหว่างรอ cloud */
+export function createCachePeek(cache: LocalCache) {
+  return {
+    settings: () => cache.getStoredSettings(),
+    scansByDate: async (date: string) => nonEmpty(await cache.getScansByDate(date)),
+    scansInRange: async (from: string, to: string) => nonEmpty(await cache.getScansInRange(from, to)),
+    weights: async () => nonEmpty(await cache.getWeights()),
+    exercisesByDate: async (date: string) => nonEmpty(await cache.getExercisesByDate(date)),
+    exercisesInRange: async (from: string, to: string) => nonEmpty(await cache.getExercisesInRange(from, to)),
+  };
+}
+
 /** ที่เก็บในหน่วยความจำ: ใช้ใน test และเป็นสำรองเมื่อเบราว์เซอร์ไม่มี IndexedDB */
 export function createMemoryCache(): LocalCache {
   const scans = new Map<string, Scan>();
   const weights = new Map<string, WeightEntry>();
   const exercises = new Map<string, ExerciseEntry>();
   let settings: Settings = DEFAULT_SETTINGS;
+  let settingsStored = false;
 
   const inRange = (from: string, to: string) => [...scans.values()].filter((s) => s.date >= from && s.date <= to).sort(byCreatedAt);
 
@@ -213,12 +292,17 @@ export function createMemoryCache(): LocalCache {
     putExercise: async (entry) => void exercises.set(entry.id, entry),
     deleteExercise: async (id) => void exercises.delete(id),
     getSettings: async () => settings,
-    saveSettings: async (next) => void (settings = next),
+    saveSettings: async (next) => {
+      settings = next;
+      settingsStored = true;
+    },
+    getStoredSettings: async () => (settingsStored ? settings : undefined),
     importData: async (newScans, newSettings, newWeights, newExercises = []) => {
       for (const entry of newExercises) exercises.set(entry.id, entry);
       for (const scan of newScans) scans.set(scan.id, scan);
       for (const entry of newWeights) weights.set(entry.date, entry);
       settings = newSettings;
+      settingsStored = true;
     },
     replaceScansInRange: async (from, to, next) => {
       for (const scan of inRange(from, to)) scans.delete(scan.id);
@@ -245,6 +329,7 @@ export function createMemoryCache(): LocalCache {
       exercises.clear();
       weights.clear();
       settings = DEFAULT_SETTINGS;
+      settingsStored = false;
     },
   };
 }

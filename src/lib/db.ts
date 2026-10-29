@@ -1,11 +1,10 @@
 "use client";
 
-import { createSupabaseStore } from "./cloudStore";
 import { createIdbCache } from "./localCache";
-import { sumItems } from "./nutrition";
-import type { DailyTotals } from "./stats";
-import { createCachedStore, createMemoryCache, SaveError, type DataStore, type LocalCache, type ScanQuery } from "./store";
-import { CLOUD_ENABLED, getSupabase } from "./supabase/client";
+import { dailyTotals, type DailyTotals } from "./stats";
+import { createQueryCache } from "./queryCache";
+import { createCachedStore, createCachePeek, createLazyStore, createMemoryCache, SaveError, type DataStore, type LocalCache, type ScanQuery } from "./store";
+import { CLOUD_ENABLED } from "./supabase/config";
 import { showToast } from "./toast";
 import type { ExerciseEntry, Scan, Settings, WeightEntry } from "./types";
 
@@ -22,15 +21,37 @@ function localCache(): LocalCache {
   return cache;
 }
 
+/** โหลด Supabase SDK เมื่อใช้ข้อมูลครั้งแรก (ไม่อยู่ใน JS ที่หน้าจอต้องรอก่อนแสดงผล) */
+async function loadCloudStore(): Promise<DataStore> {
+  const [{ createSupabaseStore }, { getSupabase }] = await Promise.all([import("./cloudStore"), import("./supabase/client")]);
+  return createCachedStore(createSupabaseStore(getSupabase()), localCache(), () => navigator.onLine);
+}
+
 function data(): DataStore {
-  store ??= CLOUD_ENABLED ? createCachedStore(createSupabaseStore(getSupabase()), localCache(), () => navigator.onLine) : localCache();
+  store ??= CLOUD_ENABLED ? createLazyStore(loadCloudStore, localCache()) : localCache();
   return store;
+}
+
+/** ค่าที่หน้าจอโหลดล่าสุด: สลับหน้าแล้วแสดงทันที แล้วค่อยโหลดใหม่เบื้องหลัง */
+export const queryCache = createQueryCache();
+
+/**
+ * สำเนาในเครื่องไว้แสดงก่อนระหว่างรอ cloud (ตอนเปิดแอปครั้งแรก)
+ * ไม่ได้ต่อ cloud = อ่านจากเครื่องอยู่แล้ว ไม่ต้องใช้
+ */
+let peek: ReturnType<typeof createCachePeek> | null = null;
+
+export function cachePeek(): ReturnType<typeof createCachePeek> | null {
+  if (!CLOUD_ENABLED) return null;
+  peek ??= createCachePeek(localCache());
+  return peek;
 }
 
 /** แจ้งหน้าอื่นในแท็บเดียวกันว่าข้อมูลเปลี่ยน */
 export const DATA_CHANGED_EVENT = "calorie-check:data-changed";
 
 function notifyChanged() {
+  queryCache.invalidate();
   window.dispatchEvent(new Event(DATA_CHANGED_EVENT));
 }
 
@@ -65,11 +86,7 @@ export function getScansInRange(from: string, to: string, query?: ScanQuery): Pr
 
 /** ยอด kcal ต่อวันในช่วงวันที่ — ไม่ดึงรูปย่อ */
 export async function getDailyTotals(from: string, to: string): Promise<DailyTotals> {
-  const totals: DailyTotals = {};
-  for (const scan of await getScansInRange(from, to, { thumbnails: false })) {
-    totals[scan.date] = (totals[scan.date] ?? 0) + sumItems(scan.items);
-  }
-  return totals;
+  return dailyTotals(await getScansInRange(from, to, { thumbnails: false }));
 }
 
 export function getScan(id: string): Promise<Scan | undefined> {
@@ -146,6 +163,7 @@ export async function markBackedUp(): Promise<void> {
 
 /** ออกจากระบบ: ลบสำเนาในเครื่อง ไม่ให้คนถัดไปที่ใช้เครื่องนี้เห็น */
 export async function clearLocalData(): Promise<void> {
+  queryCache.clear();
   await localCache().clear();
 }
 

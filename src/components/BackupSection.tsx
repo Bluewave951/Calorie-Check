@@ -7,7 +7,7 @@ import { backupFileName, BackupError, buildBackup, parseBackup, summarize, type 
 import { DATA_CHANGED_EVENT, getAllExercises, getAllScans, getSettings, getWeights, importData, markBackedUp } from "@/lib/db";
 import { formatKcal, formatThaiDate } from "@/lib/format";
 import { parseDateKey } from "@/lib/nutrition";
-import { CLOUD_ENABLED } from "@/lib/supabase/client";
+import { CLOUD_ENABLED } from "@/lib/supabase/config";
 import { showToast } from "@/lib/toast";
 
 function describe(summary: BackupSummary): string {
