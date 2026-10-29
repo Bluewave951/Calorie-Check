@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DayList } from "@/components/DayList";
+import { ExerciseHistory } from "@/components/ExerciseHistory";
 import { MonthView } from "@/components/MonthView";
 import { WeekStrip } from "@/components/WeekStrip";
 import { YearView } from "@/components/YearView";
@@ -60,6 +61,10 @@ function DayView({
       </section>
 
       <DayList date={selected} scans={dayScans} />
+
+      <ExerciseHistory
+        range={{ kind: "week", selected, dates: Array.from({ length: 7 }, (_, i) => dateKey(addDays(parseDateKey(startDate), i))) }}
+      />
     </>
   );
 }
@@ -129,19 +134,25 @@ function History({ today }: { today: string }) {
         <DayView selected={selected} endDate={endDate} today={today} goal={settings.dailyGoal} onSelect={setSelected} onShift={shiftWeek} />
       )}
       {period === "month" && (
-        <MonthView year={cursor.year} month={cursor.month} today={today} goal={settings.dailyGoal} onShift={shiftMonth} onPickDay={openDay} />
+        <>
+          <MonthView year={cursor.year} month={cursor.month} today={today} goal={settings.dailyGoal} onShift={shiftMonth} onPickDay={openDay} />
+          <ExerciseHistory range={{ kind: "month", year: cursor.year, month: cursor.month }} />
+        </>
       )}
       {period === "year" && (
-        <YearView
-          year={cursor.year}
-          today={today}
-          goal={settings.dailyGoal}
-          onShift={(years) => setCursor(({ year, month }) => ({ year: year + years, month }))}
-          onPickMonth={(month) => {
-            setCursor(({ year }) => ({ year, month }));
-            setPeriod("month");
-          }}
-        />
+        <>
+          <YearView
+            year={cursor.year}
+            today={today}
+            goal={settings.dailyGoal}
+            onShift={(years) => setCursor(({ year, month }) => ({ year: year + years, month }))}
+            onPickMonth={(month) => {
+              setCursor(({ year }) => ({ year, month }));
+              setPeriod("month");
+            }}
+          />
+          <ExerciseHistory range={{ kind: "year", year: cursor.year }} />
+        </>
       )}
     </main>
   );

@@ -28,6 +28,7 @@ function fakeRemote() {
     putExercise: guard(data.putExercise),
     deleteExercise: guard(data.deleteExercise),
     getAllExercises: guard(data.getAllExercises),
+    getExercisesInRange: guard(data.getExercisesInRange),
     getSettings: guard(data.getSettings),
     saveSettings: guard(data.saveSettings),
     importData: guard(data.importData),
@@ -166,5 +167,16 @@ describe("createCachedStore: นำเข้า/ส่งออกการอ�
     const { store } = setup();
     await store.importData([], DEFAULT_SETTINGS, [], [entry, { ...entry, id: "e2", date: "2026-10-28" }]);
     expect((await store.getAllExercises()).map((e) => e.id)).toEqual(["e2", "e1"]);
+  });
+});
+
+describe("createCachedStore: การออกกำลังกายตามช่วงวันที่", () => {
+  it("อ่านเฉพาะช่วง รวมวันแรกและวันสุดท้าย และเน็ตหลุดยังอ่านจากสำเนาได้", async () => {
+    const t = setup();
+    const at = (id: string, date: string) => ({ id, date, exerciseId: "walk", minutes: 30, kcal: 150 });
+    await t.store.importData([], DEFAULT_SETTINGS, [], [at("a", "2026-09-30"), at("b", "2026-10-01"), at("c", "2026-10-31"), at("d", "2026-11-01")]);
+    expect((await t.store.getExercisesInRange("2026-10-01", "2026-10-31")).map((x) => x.id)).toEqual(["b", "c"]);
+    t.goOffline();
+    expect((await t.store.getExercisesInRange("2026-10-01", "2026-10-31")).map((x) => x.id)).toEqual(["b", "c"]);
   });
 });

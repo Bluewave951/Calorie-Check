@@ -110,6 +110,10 @@ export function getAllExercises(): Promise<ExerciseEntry[]> {
   return data().getAllExercises();
 }
 
+export function getExercisesInRange(from: string, to: string): Promise<ExerciseEntry[]> {
+  return data().getExercisesInRange(from, to);
+}
+
 export function putExercise(entry: ExerciseEntry): Promise<void> {
   return save(() => data().putExercise(entry));
 }
