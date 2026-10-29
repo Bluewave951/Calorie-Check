@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { backupFileName, BackupError, backupReminder, buildBackup, parseBackup, summarize } from "./backup";
-import type { Scan } from "./types";
+import { DEFAULT_SETTINGS, type BodyProfile, type Scan } from "./types";
 
 const scan = (over: Partial<Scan> = {}): Scan => ({
   id: "s1",
@@ -31,7 +31,7 @@ const settings = { dailyGoal: 1800, model: "nvidia/nemotron-3.5-super-vl:free" }
 
 describe("ไฟล์สำรอง", () => {
   it("ส่งออกแล้วนำเข้าได้ข้อมูลเหมือนเดิม", () => {
-    const backup = buildBackup([scan(), scan({ id: "s2", date: "2026-10-20", meal: "dinner" })], settings, [], new Date("2026-10-26T10:00:00Z"));
+    const backup = buildBackup([scan(), scan({ id: "s2", date: "2026-10-20", meal: "dinner" })], settings, [], [], new Date("2026-10-26T10:00:00Z"));
     const restored = parseBackup(JSON.stringify(backup));
     expect(restored).toEqual(backup);
     expect(restored.exportedAt).toBe("2026-10-26T10:00:00.000Z");
@@ -41,6 +41,8 @@ describe("ไฟล์สำรอง", () => {
     const profile = { sex: "female", age: 25, heightCm: 165, weightKg: 60, activity: "moderate", weightGoal: "lose" } as const;
     const withProfile = buildBackup([], { ...settings, profile });
     expect(parseBackup(JSON.stringify(withProfile)).settings.profile).toEqual(profile);
+    const shaped: BodyProfile = { ...profile, bodyFatPercent: 32, fatAreas: ["belly", "thighs"] };
+    expect(parseBackup(JSON.stringify(buildBackup([], { ...settings, profile: shaped }))).settings.profile).toEqual(shaped);
     expect(parseBackup(JSON.stringify(buildBackup([], settings))).settings.profile).toBeUndefined();
     const broken = { ...withProfile, settings: { ...settings, profile: { ...profile, activity: "couch" } } };
     expect(() => parseBackup(JSON.stringify(broken))).toThrow(BackupError);
@@ -121,5 +123,24 @@ describe("เตือนให้สำรองข้อมูล", () => {
     expect(backupReminder(now - 13 * DAY, now)).toBeNull();
     expect(backupReminder(now - 14 * DAY, now)).toBe(14);
     expect(backupReminder(now - 20.5 * DAY, now)).toBe(20);
+  });
+});
+
+describe("สำรองประวัติการออกกำลังกาย", () => {
+  const entry = { id: "e1", date: "2026-10-29", exerciseId: "walk", minutes: 30, kcal: 158 };
+
+  it("ส่งออกแล้วนำเข้าได้ข้อมูลเดิม", () => {
+    const backup = buildBackup([], DEFAULT_SETTINGS, [], [entry]);
+    expect(parseBackup(JSON.stringify(backup)).exercises).toEqual([entry]);
+  });
+
+  it("ไฟล์เก่าที่ไม่มีช่อง exercises = รายการว่าง", () => {
+    const { exercises: _, ...old } = buildBackup([], DEFAULT_SETTINGS);
+    expect(parseBackup(JSON.stringify(old)).exercises).toEqual([]);
+  });
+
+  it("ข้อมูลเสีย (นาทีติดลบ) นำเข้าไม่ได้", () => {
+    const backup = buildBackup([], DEFAULT_SETTINGS, [], [{ ...entry, minutes: -5 }]);
+    expect(() => parseBackup(JSON.stringify(backup))).toThrow(BackupError);
   });
 });

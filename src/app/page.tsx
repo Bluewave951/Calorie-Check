@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronRight, Plus, ShieldAlert, Target } from "lucide-react";
+import { ChevronRight, Dumbbell, Plus, ShieldAlert, Target } from "lucide-react";
 import { CalorieRing } from "@/components/CalorieRing";
 import { DayList } from "@/components/DayList";
 import { MacroBars } from "@/components/MacroBars";
@@ -14,8 +14,9 @@ import { panelId, tabId, TodayTabs } from "@/components/TodayTabs";
 import { WeightCard } from "@/components/WeightCard";
 import { backupReminder } from "@/lib/backup";
 import { formatKcal, formatThaiDate, greeting } from "@/lib/format";
-import { useFrequentFoods, useNow, useScansByDate, useSettings, useWeights } from "@/lib/hooks";
+import { useExercisesByDate, useFrequentFoods, useNow, useScansByDate, useSettings, useWeights } from "@/lib/hooks";
 import { dateKey, itemFromReference, itemKcal, kcalByMeal, sumMacros, sumScans } from "@/lib/nutrition";
+import { dailyBudget } from "@/lib/exercise";
 import { macroTargets } from "@/lib/tdee";
 import { DEFAULT_TODAY_TAB, parseTodayTab, type TodayTab } from "@/lib/todayTabs";
 
@@ -75,11 +76,15 @@ function Today() {
   const scans = useScansByDate(today);
   const frequent = useFrequentFoods(today);
   const weights = useWeights();
+  const exercises = useExercisesByDate(today);
 
   if (!now || !today || !settings || !scans) return <Skeleton />;
   const unbackedDays = backupReminder(settings.unbackedSince, now.getTime());
   const { unknown, ...macros } = sumMacros(scans.flatMap((scan) => scan.items));
   const eaten = sumScans(scans);
+  // ออกกำลังกายแล้วกินเพิ่มได้ตามที่เผาผลาญ
+  const goal = dailyBudget(settings.dailyGoal, exercises ?? [], today);
+  const burned = goal - settings.dailyGoal;
 
   return (
     <main className="flex flex-col gap-[18px]">
@@ -111,10 +116,10 @@ function Today() {
         </Link>
       )}
 
-      <ReminderBanner eaten={eaten} goal={settings.dailyGoal} now={now} reminder={settings.reminder} />
+      <ReminderBanner eaten={eaten} goal={goal} now={now} reminder={settings.reminder} />
 
-      <section aria-label="แคลอรี่วันนี้" className="hero flex items-center gap-3 p-4" data-over={eaten > settings.dailyGoal}>
-        <CalorieRing eaten={eaten} goal={settings.dailyGoal} />
+      <section aria-label="แคลอรี่วันนี้" className="hero flex items-center gap-3 p-4" data-over={eaten > goal}>
+        <CalorieRing eaten={eaten} goal={goal} />
         <dl className="flex min-w-0 flex-1 flex-col gap-2">
           {MACRO_CHIPS.map(({ key, label, color }) => (
             <div key={key} className="flex items-center justify-between gap-2 rounded-2xl bg-white/15 px-3 py-2">
@@ -130,6 +135,13 @@ function Today() {
           ))}
         </dl>
       </section>
+
+      {burned > 0 && (
+        <Link href="/exercise" className="pressable -mt-2 flex items-center gap-2 text-sm text-primary">
+          <Dumbbell aria-hidden size={16} />
+          +{formatKcal(burned)} จากออกกำลังกายวันนี้ (เป้าพื้นฐาน {formatKcal(settings.dailyGoal)})
+        </Link>
+      )}
 
       <TodayTabs value={tab} onChange={selectTab} />
 
@@ -170,7 +182,7 @@ function Today() {
       <TabPanel tab="nutrients" active={tab}>
         <section aria-labelledby="macro-title" className="card p-4">
           <SectionTitle id="macro-title" title="สารอาหารหลัก" subtitle="Macros" />
-          <MacroBars eaten={macros} target={macroTargets(settings.dailyGoal, settings.profile)} unknown={unknown} />
+          <MacroBars eaten={macros} target={macroTargets(goal, settings.profile)} unknown={unknown} />
         </section>
         <section aria-labelledby="by-meal-title" className="card p-4">
           <SectionTitle id="by-meal-title" title="แคลอรี่แต่ละมื้อ" subtitle="By meal" />

@@ -117,13 +117,39 @@ export interface BodyProfile {
   weightKg: number;
   activity: ActivityLevel;
   weightGoal: WeightGoal;
+  /** % ไขมันในร่างกาย (เลือกจากภาพเทียบรูปร่าง) */
+  bodyFatPercent?: number;
+  /** ส่วนของร่างกายที่อยากลดไขมัน/กระชับ */
+  fatAreas?: FatArea[];
 }
+
+export const FAT_AREAS = ["upper", "belly", "flank", "hips", "thighs", "arms"] as const;
+export type FatArea = (typeof FAT_AREAS)[number];
+
+export const FAT_AREA_LABEL: Record<FatArea, string> = {
+  upper: "ช่วงบน (อก/หลัง)",
+  belly: "หน้าท้อง",
+  flank: "เอว/ท้องด้านข้าง",
+  hips: "สะโพก",
+  thighs: "ต้นขา/ขา",
+  arms: "ต้นแขน",
+};
 
 /** น้ำหนักตัวที่ชั่งในวันหนึ่ง (วันละค่าเดียว ชั่งซ้ำ = แทนค่าเดิม) */
 export interface WeightEntry {
   /** วันที่ตามเวลาท้องถิ่น YYYY-MM-DD */
   date: string;
   weightKg: number;
+}
+
+/** การออกกำลังกายหนึ่งครั้ง (kcal คำนวณตอนบันทึกจากน้ำหนักตัวขณะนั้น) */
+export interface ExerciseEntry {
+  id: string;
+  /** วันที่ตามเวลาท้องถิ่น YYYY-MM-DD */
+  date: string;
+  exerciseId: string;
+  minutes: number;
+  kcal: number;
 }
 
 /** การเตือนเมื่อกินยังไม่ครบเป้าแคลอรี่ */

@@ -2,7 +2,7 @@
  * แปลงข้อมูลในแอป ↔ แถวในตาราง Supabase (โครงตารางอยู่ใน supabase/schema.sql)
  * ไม่มี user_id เพราะฐานข้อมูลใส่ auth.uid() ให้เอง และ RLS กรองให้เห็นเฉพาะของตัวเอง
  */
-import { DEFAULT_SETTINGS, type FoodItem, type MealType, type Scan, type Settings, type WeightEntry } from "./types";
+import { DEFAULT_SETTINGS, type FoodItem, type MealType, type Scan, type Settings, type WeightEntry, type ExerciseEntry } from "./types";
 
 export interface ScanRow {
   id: string;
@@ -29,6 +29,22 @@ export function scanToRow(scan: Scan): ScanRow {
 
 export function rowToScan(row: ScanRow): Scan {
   return { id: row.id, date: row.date, meal: row.meal, createdAt: row.created_at, thumbnail: row.thumbnail ?? null, items: row.items };
+}
+
+export interface ExerciseRow {
+  id: string;
+  date: string;
+  exercise_id: string;
+  minutes: number;
+  kcal: number;
+}
+
+export function exerciseToRow(entry: ExerciseEntry): ExerciseRow {
+  return { id: entry.id, date: entry.date, exercise_id: entry.exerciseId, minutes: entry.minutes, kcal: entry.kcal };
+}
+
+export function rowToExercise(row: ExerciseRow): ExerciseEntry {
+  return { id: row.id, date: row.date, exerciseId: row.exercise_id, minutes: row.minutes, kcal: row.kcal };
 }
 
 export function weightToRow(entry: WeightEntry): WeightRow {

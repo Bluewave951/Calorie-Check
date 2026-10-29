@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { rowToScan, rowToSettings, rowToWeight, scanToRow, settingsToRow, weightToRow, type ScanRow, type SettingsRow, type WeightRow } from "./cloudRows";
+import { exerciseToRow, rowToExercise, type ExerciseRow, rowToScan, rowToSettings, rowToWeight, scanToRow, settingsToRow, weightToRow, type ScanRow, type SettingsRow, type WeightRow } from "./cloudRows";
 import type { DataStore } from "./store";
 
 const SCAN_COLUMNS = "id,date,meal,created_at,thumbnail,items";
@@ -22,6 +22,7 @@ export function createSupabaseStore(client: SupabaseClient): DataStore {
   const scans = () => client.from("scans");
   const weights = () => client.from("weights");
   const settings = () => client.from("settings");
+  const exercises = () => client.from("exercises");
 
   const upsertScans = async (rows: ScanRow[]) => void check(await scans().upsert(rows, { onConflict: "user_id,id" }));
   const upsertWeights = async (rows: WeightRow[]) => void check(await weights().upsert(rows, { onConflict: "user_id,date" }));
@@ -55,9 +56,22 @@ export function createSupabaseStore(client: SupabaseClient): DataStore {
     },
     putWeight: (entry) => upsertWeights([weightToRow(entry)]),
     deleteWeight: async (date) => void check(await weights().delete().eq("date", date)),
+    getExercisesByDate: async (date) => {
+      const rows = check(await exercises().select("id,date,exercise_id,minutes,kcal").eq("date", date).order("id"));
+      return (rows as ExerciseRow[]).map(rowToExercise);
+    },
+    getAllExercises: async () => {
+      const rows = check(await exercises().select("id,date,exercise_id,minutes,kcal").order("date").order("id"));
+      return (rows as ExerciseRow[]).map(rowToExercise);
+    },
+    putExercise: async (entry) => void check(await exercises().upsert(exerciseToRow(entry), { onConflict: "user_id,id" })),
+    deleteExercise: async (id) => void check(await exercises().delete().eq("id", id)),
     getSettings: async () => rowToSettings(check(await settings().select("data").maybeSingle()) as SettingsRow | null),
     saveSettings: (value) => upsertSettings(settingsToRow(value)),
-    importData: async (newScans, newSettings, newWeights) => {
+    importData: async (newScans, newSettings, newWeights, newExercises = []) => {
+      for (const batch of chunks(newExercises.map(exerciseToRow), IMPORT_BATCH)) {
+        check(await exercises().upsert(batch, { onConflict: "user_id,id" }));
+      }
       for (const batch of chunks(newScans.map(scanToRow), IMPORT_BATCH)) await upsertScans(batch);
       if (newWeights.length) await upsertWeights(newWeights.map(weightToRow));
       await upsertSettings(settingsToRow(newSettings));

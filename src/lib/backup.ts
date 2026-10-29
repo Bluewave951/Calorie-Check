@@ -8,9 +8,11 @@ import {
   MIN_GOAL,
   SWEETNESS_LEVELS,
   WEIGHT_GOALS,
+  FAT_AREAS,
   type Scan,
   type Settings,
   type WeightEntry,
+  type ExerciseEntry,
 } from "./types";
 
 const BACKUP_APP = "calorie-check";
@@ -56,6 +58,8 @@ const profileSchema = z.object({
   weightKg: between(BODY_LIMITS.weightKg),
   activity: z.enum(ACTIVITY_LEVELS),
   weightGoal: z.enum(WEIGHT_GOALS),
+  bodyFatPercent: z.number().min(3).max(70).optional(),
+  fatAreas: z.array(z.enum(FAT_AREAS)).optional(),
 });
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -85,6 +89,14 @@ const weightSchema = z.object({
   weightKg: between(BODY_LIMITS.weightKg),
 });
 
+const exerciseSchema = z.object({
+  id: z.string().min(1),
+  date: dateSchema,
+  exerciseId: z.string().min(1),
+  minutes: z.number().int().min(1).max(1440),
+  kcal: z.number().min(0),
+});
+
 const backupSchema = z.object({
   app: z.literal(BACKUP_APP),
   version: z.literal(BACKUP_VERSION),
@@ -93,14 +105,19 @@ const backupSchema = z.object({
   scans: z.array(scanSchema),
   /** ไฟล์ก่อนมีบันทึกน้ำหนัก = ไม่มีช่องนี้ */
   weights: z.array(weightSchema).default([]),
+  /** ไฟล์ก่อนมีบันทึกออกกำลังกาย = ไม่มีช่องนี้ */
+  exercises: z.array(exerciseSchema).default([]),
 });
 
 export type Backup = z.infer<typeof backupSchema>;
 
 export class BackupError extends Error {}
 
-export function buildBackup(scans: Scan[], settings: Settings, weights: WeightEntry[] = [], now = new Date()): Backup {
-  return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: now.toISOString(), settings, scans, weights };
+export function buildBackup(scans: Scan[], settings: Settings, weights: WeightEntry[] = [],
+  exercises: ExerciseEntry[] = [],
+  now = new Date(),
+): Backup {
+  return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: now.toISOString(), settings, scans, weights, exercises };
 }
 
 export function backupFileName(now = new Date()): string {

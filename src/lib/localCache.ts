@@ -1,6 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import { byCreatedAt, type LocalCache } from "./store";
-import { DEFAULT_SETTINGS, type Scan, type Settings, type WeightEntry } from "./types";
+import { byCreatedAt, byDateThenId, type LocalCache } from "./store";
+import { DEFAULT_SETTINGS, type Scan, type Settings, type WeightEntry, type ExerciseEntry } from "./types";
 
 interface CalorieDB extends DBSchema {
   scans: {
@@ -16,6 +16,11 @@ interface CalorieDB extends DBSchema {
     key: string;
     value: WeightEntry;
   };
+  exercises: {
+    key: string;
+    value: ExerciseEntry;
+    indexes: { "by-date": string };
+  };
 }
 
 const SETTINGS_KEY = "settings";
@@ -25,7 +30,7 @@ export function createIdbCache(name = "calorie-check"): LocalCache {
   let dbPromise: Promise<IDBPDatabase<CalorieDB>> | null = null;
 
   function db() {
-    dbPromise ??= openDB<CalorieDB>(name, 2, {
+    dbPromise ??= openDB<CalorieDB>(name, 3, {
       upgrade(database, oldVersion) {
         if (oldVersion < 1) {
           const scans = database.createObjectStore("scans", { keyPath: "id" });
@@ -33,6 +38,7 @@ export function createIdbCache(name = "calorie-check"): LocalCache {
           database.createObjectStore("settings");
         }
         if (oldVersion < 2) database.createObjectStore("weights", { keyPath: "date" });
+        if (oldVersion < 3) database.createObjectStore("exercises", { keyPath: "id" }).createIndex("by-date", "date");
       },
     });
     return dbPromise;
@@ -61,13 +67,22 @@ export function createIdbCache(name = "calorie-check"): LocalCache {
     deleteWeight: async (date) => {
       await (await db()).delete("weights", date);
     },
+    getExercisesByDate: async (date) => (await db()).getAllFromIndex("exercises", "by-date", date),
+    getAllExercises: async () => (await (await db()).getAll("exercises")).sort(byDateThenId),
+    putExercise: async (entry) => {
+      await (await db()).put("exercises", entry);
+    },
+    deleteExercise: async (id) => {
+      await (await db()).delete("exercises", id);
+    },
     getSettings: async () => ({ ...DEFAULT_SETTINGS, ...(await (await db()).get("settings", SETTINGS_KEY)) }),
     saveSettings: async (settings) => {
       await (await db()).put("settings", settings, SETTINGS_KEY);
     },
-    importData: async (scans, settings, weights) => {
-      const tx = (await db()).transaction(["scans", "settings", "weights"], "readwrite");
+    importData: async (scans, settings, weights, exercises = []) => {
+      const tx = (await db()).transaction(["scans", "settings", "weights", "exercises"], "readwrite");
       await Promise.all([
+        ...exercises.map((entry) => tx.objectStore("exercises").put(entry)),
         ...scans.map((scan) => tx.objectStore("scans").put(scan)),
         ...weights.map((entry) => tx.objectStore("weights").put(entry)),
         tx.objectStore("settings").put(settings, SETTINGS_KEY),
@@ -83,9 +98,24 @@ export function createIdbCache(name = "calorie-check"): LocalCache {
       const tx = (await db()).transaction("weights", "readwrite");
       await Promise.all([tx.store.clear(), ...weights.map((entry) => tx.store.put(entry)), tx.done]);
     },
+    replaceAllExercises: async (entries) => {
+      const tx = (await db()).transaction("exercises", "readwrite");
+      await Promise.all([tx.store.clear(), ...entries.map((entry) => tx.store.put(entry)), tx.done]);
+    },
+    replaceExercisesByDate: async (date, entries) => {
+      const tx = (await db()).transaction("exercises", "readwrite");
+      const oldKeys = await tx.store.index("by-date").getAllKeys(date);
+      await Promise.all([...oldKeys.map((key) => tx.store.delete(key)), ...entries.map((entry) => tx.store.put(entry)), tx.done]);
+    },
     clear: async () => {
-      const tx = (await db()).transaction(["scans", "settings", "weights"], "readwrite");
-      await Promise.all([tx.objectStore("scans").clear(), tx.objectStore("settings").clear(), tx.objectStore("weights").clear(), tx.done]);
+      const tx = (await db()).transaction(["scans", "settings", "weights", "exercises"], "readwrite");
+      await Promise.all([
+        tx.objectStore("scans").clear(),
+        tx.objectStore("settings").clear(),
+        tx.objectStore("weights").clear(),
+        tx.objectStore("exercises").clear(),
+        tx.done,
+      ]);
     },
   };
 }

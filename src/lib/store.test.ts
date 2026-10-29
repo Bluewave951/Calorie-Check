@@ -24,6 +24,10 @@ function fakeRemote() {
     getWeights: guard(data.getWeights),
     putWeight: guard(data.putWeight),
     deleteWeight: guard(data.deleteWeight),
+    getExercisesByDate: guard(data.getExercisesByDate),
+    putExercise: guard(data.putExercise),
+    deleteExercise: guard(data.deleteExercise),
+    getAllExercises: guard(data.getAllExercises),
     getSettings: guard(data.getSettings),
     saveSettings: guard(data.saveSettings),
     importData: guard(data.importData),
@@ -126,5 +130,41 @@ describe("createCachedStore: บันทึก", () => {
     const error = await store.putWeight({ date: "2026-10-27", weightKg: 60 }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(SaveError);
     expect((error as SaveError).offline).toBe(false);
+  });
+});
+
+describe("createCachedStore: การออกกำลังกาย", () => {
+  const entry = { id: "e1", date: "2026-10-29", exerciseId: "walk", minutes: 30, kcal: 158 };
+
+  it("บันทึกขึ้น cloud และอ่านได้ตามวัน", async () => {
+    const { store, cloud } = setup();
+    await store.putExercise(entry);
+    expect(await cloud.data.getExercisesByDate("2026-10-29")).toEqual([entry]);
+    expect(await store.getExercisesByDate("2026-10-30")).toEqual([]);
+  });
+
+  it("เน็ตหลุด: อ่านจากสำเนา", async () => {
+    const t = setup();
+    await t.store.putExercise(entry);
+    t.goOffline();
+    expect(await t.store.getExercisesByDate("2026-10-29")).toEqual([entry]);
+  });
+
+  it("ลบแล้วหายทั้ง cloud และสำเนา", async () => {
+    const t = setup();
+    await t.store.putExercise(entry);
+    await t.store.deleteExercise("e1");
+    expect(await t.cache.getExercisesByDate("2026-10-29")).toEqual([]);
+    expect(await t.cloud.data.getExercisesByDate("2026-10-29")).toEqual([]);
+  });
+});
+
+describe("createCachedStore: นำเข้า/ส่งออกการออกกำลังกาย", () => {
+  const entry = { id: "e1", date: "2026-10-29", exerciseId: "walk", minutes: 30, kcal: 158 };
+
+  it("importData รวมการออกกำลังกาย และ getAllExercises อ่านได้ทุกวัน", async () => {
+    const { store } = setup();
+    await store.importData([], DEFAULT_SETTINGS, [], [entry, { ...entry, id: "e2", date: "2026-10-28" }]);
+    expect((await store.getAllExercises()).map((e) => e.id)).toEqual(["e2", "e1"]);
   });
 });

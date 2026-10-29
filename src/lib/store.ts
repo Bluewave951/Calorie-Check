@@ -3,7 +3,7 @@
  * - อ่าน: cloud ก่อน สำเร็จแล้วเก็บสำเนา / ไม่สำเร็จใช้สำเนา
  * - บันทึก: ต้องขึ้น cloud ได้ก่อนจึงอัปเดตสำเนา (ไม่มีคิวรอส่งทีหลัง กันข้อมูลชนกันระหว่างเครื่อง)
  */
-import { DEFAULT_SETTINGS, type Scan, type Settings, type WeightEntry } from "./types";
+import { DEFAULT_SETTINGS, type Scan, type Settings, type WeightEntry, type ExerciseEntry } from "./types";
 
 export interface ScanQuery {
   /** false = ไม่ดึงรูปย่อ (ใช้ตอนต้องการแค่รายการอาหาร ประหยัดเน็ต) */
@@ -22,16 +22,23 @@ export interface DataStore {
   getWeights(): Promise<WeightEntry[]>;
   putWeight(entry: WeightEntry): Promise<void>;
   deleteWeight(date: string): Promise<void>;
+  /** เรียงตาม id (สร้างจากเวลาที่บันทึก) */
+  getExercisesByDate(date: string): Promise<ExerciseEntry[]>;
+  getAllExercises(): Promise<ExerciseEntry[]>;
+  putExercise(entry: ExerciseEntry): Promise<void>;
+  deleteExercise(id: string): Promise<void>;
   getSettings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<void>;
   /** รวมกับของเดิม (id เดียวกัน = ใช้ของใหม่) และแทนการตั้งค่า */
-  importData(scans: Scan[], settings: Settings, weights: WeightEntry[]): Promise<void>;
+  importData(scans: Scan[], settings: Settings, weights: WeightEntry[], exercises?: ExerciseEntry[]): Promise<void>;
 }
 
 /** สำเนาในเครื่อง: ต้องแทนข้อมูลทั้งช่วงได้ เพื่อลบรายการที่ถูกลบจากเครื่องอื่น */
 export interface LocalCache extends DataStore {
   replaceScansInRange(from: string, to: string, scans: Scan[]): Promise<void>;
   replaceWeights(weights: WeightEntry[]): Promise<void>;
+  replaceExercisesByDate(date: string, entries: ExerciseEntry[]): Promise<void>;
+  replaceAllExercises(entries: ExerciseEntry[]): Promise<void>;
   clear(): Promise<void>;
 }
 
@@ -50,6 +57,10 @@ const ALL_DATES = ["0000-01-01", "9999-12-31"] as const;
 
 export function byCreatedAt(a: Scan, b: Scan) {
   return a.createdAt - b.createdAt;
+}
+
+export function byDateThenId(a: ExerciseEntry, b: ExerciseEntry) {
+  return a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
 }
 
 export function createCachedStore(remote: DataStore, cache: LocalCache, isOnline: () => boolean): DataStore {
@@ -127,6 +138,28 @@ export function createCachedStore(remote: DataStore, cache: LocalCache, isOnline
         () => remote.deleteWeight(date),
         () => cache.deleteWeight(date),
       ),
+    getExercisesByDate: (date) =>
+      read(
+        () => remote.getExercisesByDate(date),
+        (entries) => cache.replaceExercisesByDate(date, entries),
+        () => cache.getExercisesByDate(date),
+      ),
+    getAllExercises: () =>
+      read(
+        () => remote.getAllExercises(),
+        (entries) => cache.replaceAllExercises(entries),
+        () => cache.getAllExercises(),
+      ),
+    putExercise: (entry) =>
+      write(
+        () => remote.putExercise(entry),
+        () => cache.putExercise(entry),
+      ),
+    deleteExercise: (id) =>
+      write(
+        () => remote.deleteExercise(id),
+        () => cache.deleteExercise(id),
+      ),
     getSettings: () =>
       read(
         () => remote.getSettings(),
@@ -138,10 +171,10 @@ export function createCachedStore(remote: DataStore, cache: LocalCache, isOnline
         () => remote.saveSettings(settings),
         () => cache.saveSettings(settings),
       ),
-    importData: (scans, settings, weights) =>
+    importData: (scans, settings, weights, exercises = []) =>
       write(
-        () => remote.importData(scans, settings, weights),
-        () => cache.importData(scans, settings, weights),
+        () => remote.importData(scans, settings, weights, exercises),
+        () => cache.importData(scans, settings, weights, exercises),
       ),
   };
 }
@@ -150,6 +183,7 @@ export function createCachedStore(remote: DataStore, cache: LocalCache, isOnline
 export function createMemoryCache(): LocalCache {
   const scans = new Map<string, Scan>();
   const weights = new Map<string, WeightEntry>();
+  const exercises = new Map<string, ExerciseEntry>();
   let settings: Settings = DEFAULT_SETTINGS;
 
   const inRange = (from: string, to: string) => [...scans.values()].filter((s) => s.date >= from && s.date <= to).sort(byCreatedAt);
@@ -164,9 +198,14 @@ export function createMemoryCache(): LocalCache {
     getWeights: async () => [...weights.values()].sort((a, b) => a.date.localeCompare(b.date)),
     putWeight: async (entry) => void weights.set(entry.date, entry),
     deleteWeight: async (date) => void weights.delete(date),
+    getExercisesByDate: async (date) => [...exercises.values()].filter((e) => e.date === date).sort((a, b) => a.id.localeCompare(b.id)),
+    getAllExercises: async () => [...exercises.values()].sort(byDateThenId),
+    putExercise: async (entry) => void exercises.set(entry.id, entry),
+    deleteExercise: async (id) => void exercises.delete(id),
     getSettings: async () => settings,
     saveSettings: async (next) => void (settings = next),
-    importData: async (newScans, newSettings, newWeights) => {
+    importData: async (newScans, newSettings, newWeights, newExercises = []) => {
+      for (const entry of newExercises) exercises.set(entry.id, entry);
       for (const scan of newScans) scans.set(scan.id, scan);
       for (const entry of newWeights) weights.set(entry.date, entry);
       settings = newSettings;
@@ -179,8 +218,17 @@ export function createMemoryCache(): LocalCache {
       weights.clear();
       for (const entry of next) weights.set(entry.date, entry);
     },
+    replaceAllExercises: async (next) => {
+      exercises.clear();
+      for (const entry of next) exercises.set(entry.id, entry);
+    },
+    replaceExercisesByDate: async (date, next) => {
+      for (const entry of exercises.values()) if (entry.date === date) exercises.delete(entry.id);
+      for (const entry of next) exercises.set(entry.id, entry);
+    },
     clear: async () => {
       scans.clear();
+      exercises.clear();
       weights.clear();
       settings = DEFAULT_SETTINGS;
     },

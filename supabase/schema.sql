@@ -25,6 +25,18 @@ create table if not exists public.weights (
   primary key (user_id, date)
 );
 
+-- การออกกำลังกาย: หลายครั้งต่อวัน
+create table if not exists public.exercises (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  id text not null,
+  date date not null,
+  exercise_id text not null,
+  minutes integer not null check (minutes > 0 and minutes <= 1440),
+  kcal integer not null check (kcal >= 0),
+  primary key (user_id, id)
+);
+create index if not exists exercises_user_date on public.exercises (user_id, date);
+
 -- การตั้งค่า: เป้าแคลอรี่ ข้อมูลร่างกาย โมเดลที่เลือก (คนละแถว)
 create table if not exists public.settings (
   user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
@@ -32,11 +44,12 @@ create table if not exists public.settings (
 );
 
 -- ให้ผู้ที่ล็อกอินเรียกตารางผ่าน Data API ได้ (โปรเจกต์ที่ปิด "expose new tables" ไว้จะไม่ให้สิทธิ์เอง)
-grant select, insert, update, delete on public.scans, public.weights, public.settings to authenticated;
+grant select, insert, update, delete on public.scans, public.weights, public.settings, public.exercises to authenticated;
 
 alter table public.scans enable row level security;
 alter table public.weights enable row level security;
 alter table public.settings enable row level security;
+alter table public.exercises enable row level security;
 
 -- (select auth.uid()) ในวงเล็บ = คำนวณครั้งเดียวต่อคำสั่ง เร็วกว่าเรียกทุกแถว
 drop policy if exists "own scans" on public.scans;
@@ -53,6 +66,12 @@ create policy "own weights" on public.weights
 
 drop policy if exists "own settings" on public.settings;
 create policy "own settings" on public.settings
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
+drop policy if exists "own exercises" on public.exercises;
+create policy "own exercises" on public.exercises
   for all to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
