@@ -7,7 +7,7 @@ import type { DailyTotals } from "./stats";
 import { createCachedStore, createMemoryCache, SaveError, type DataStore, type LocalCache, type ScanQuery } from "./store";
 import { CLOUD_ENABLED, getSupabase } from "./supabase/client";
 import { showToast } from "./toast";
-import type { Scan, Settings, WeightEntry } from "./types";
+import type { ExerciseEntry, Scan, Settings, WeightEntry } from "./types";
 
 /**
  * จุดเดียวที่หน้าจอใช้อ่าน/เขียนข้อมูล
@@ -102,6 +102,22 @@ export function deleteWeight(date: string): Promise<void> {
   return save(() => data().deleteWeight(date));
 }
 
+export function getExercisesByDate(date: string): Promise<ExerciseEntry[]> {
+  return data().getExercisesByDate(date);
+}
+
+export function getAllExercises(): Promise<ExerciseEntry[]> {
+  return data().getAllExercises();
+}
+
+export function putExercise(entry: ExerciseEntry): Promise<void> {
+  return save(() => data().putExercise(entry));
+}
+
+export function deleteExercise(id: string): Promise<void> {
+  return save(() => data().deleteExercise(id));
+}
+
 export function getSettings(): Promise<Settings> {
   return data().getSettings();
 }
@@ -111,9 +127,9 @@ export function saveSettings(settings: Settings): Promise<void> {
 }
 
 /** นำเข้าข้อมูลสำรอง: รวมกับของเดิม (id เดียวกัน = ใช้ของในไฟล์) และใช้การตั้งค่าจากไฟล์ */
-export async function importData(scans: Scan[], settings: Settings, weights: WeightEntry[]): Promise<void> {
+export async function importData(scans: Scan[], settings: Settings, weights: WeightEntry[], exercises: ExerciseEntry[] = []): Promise<void> {
   const { unbackedSince } = await getSettings();
-  await save(() => data().importData(scans, { ...settings, unbackedSince, goalConfirmed: true }, weights), { markUnbacked: false });
+  await save(() => data().importData(scans, { ...settings, unbackedSince, goalConfirmed: true }, weights, exercises), { markUnbacked: false });
 }
 
 /** ส่งออกไฟล์สำรองแล้ว → ไม่มีข้อมูลค้าง */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rowToScan, rowToSettings, rowToWeight, scanToRow, settingsToRow, weightToRow } from "./cloudRows";
+import { exerciseToRow, rowToExercise, rowToScan, rowToSettings, rowToWeight, scanToRow, settingsToRow, weightToRow } from "./cloudRows";
 import { DEFAULT_SETTINGS, type Scan, type Settings } from "./types";
 
 const scan: Scan = {
@@ -57,5 +57,14 @@ describe("settings rows", () => {
   it("ไม่มีแถว หรือข้อมูลขาดบางช่อง → เติมค่าเริ่มต้น", () => {
     expect(rowToSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(rowToSettings({ data: { dailyGoal: 1500 } })).toEqual({ ...DEFAULT_SETTINGS, dailyGoal: 1500 });
+  });
+});
+
+describe("exercise rows", () => {
+  it("แปลงไปกลับได้ข้อมูลเดิม และใช้ snake_case", () => {
+    const entry = { id: "e1", date: "2026-10-29", exerciseId: "walk", minutes: 30, kcal: 158 };
+    const row = exerciseToRow(entry);
+    expect(row).toEqual({ id: "e1", date: "2026-10-29", exercise_id: "walk", minutes: 30, kcal: 158 });
+    expect(rowToExercise(row)).toEqual(entry);
   });
 });
