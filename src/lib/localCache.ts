@@ -69,6 +69,8 @@ export function createIdbCache(name = "calorie-check"): LocalCache {
     },
     getExercisesByDate: async (date) => (await db()).getAllFromIndex("exercises", "by-date", date),
     getAllExercises: async () => (await (await db()).getAll("exercises")).sort(byDateThenId),
+    getExercisesInRange: async (from, to) =>
+      (await (await db()).getAllFromIndex("exercises", "by-date", IDBKeyRange.bound(from, to))).sort(byDateThenId),
     putExercise: async (entry) => {
       await (await db()).put("exercises", entry);
     },
@@ -101,6 +103,11 @@ export function createIdbCache(name = "calorie-check"): LocalCache {
     replaceAllExercises: async (entries) => {
       const tx = (await db()).transaction("exercises", "readwrite");
       await Promise.all([tx.store.clear(), ...entries.map((entry) => tx.store.put(entry)), tx.done]);
+    },
+    replaceExercisesInRange: async (from, to, entries) => {
+      const tx = (await db()).transaction("exercises", "readwrite");
+      const oldKeys = await tx.store.index("by-date").getAllKeys(IDBKeyRange.bound(from, to));
+      await Promise.all([...oldKeys.map((key) => tx.store.delete(key)), ...entries.map((entry) => tx.store.put(entry)), tx.done]);
     },
     replaceExercisesByDate: async (date, entries) => {
       const tx = (await db()).transaction("exercises", "readwrite");

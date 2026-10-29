@@ -25,6 +25,8 @@ export interface DataStore {
   /** เรียงตาม id (สร้างจากเวลาที่บันทึก) */
   getExercisesByDate(date: string): Promise<ExerciseEntry[]>;
   getAllExercises(): Promise<ExerciseEntry[]>;
+  /** from ถึง to รวมทั้งสองวัน เรียงตามวันแล้ว id */
+  getExercisesInRange(from: string, to: string): Promise<ExerciseEntry[]>;
   putExercise(entry: ExerciseEntry): Promise<void>;
   deleteExercise(id: string): Promise<void>;
   getSettings(): Promise<Settings>;
@@ -38,6 +40,7 @@ export interface LocalCache extends DataStore {
   replaceScansInRange(from: string, to: string, scans: Scan[]): Promise<void>;
   replaceWeights(weights: WeightEntry[]): Promise<void>;
   replaceExercisesByDate(date: string, entries: ExerciseEntry[]): Promise<void>;
+  replaceExercisesInRange(from: string, to: string, entries: ExerciseEntry[]): Promise<void>;
   replaceAllExercises(entries: ExerciseEntry[]): Promise<void>;
   clear(): Promise<void>;
 }
@@ -150,6 +153,12 @@ export function createCachedStore(remote: DataStore, cache: LocalCache, isOnline
         (entries) => cache.replaceAllExercises(entries),
         () => cache.getAllExercises(),
       ),
+    getExercisesInRange: (from, to) =>
+      read(
+        () => remote.getExercisesInRange(from, to),
+        (entries) => cache.replaceExercisesInRange(from, to, entries),
+        () => cache.getExercisesInRange(from, to),
+      ),
     putExercise: (entry) =>
       write(
         () => remote.putExercise(entry),
@@ -200,6 +209,7 @@ export function createMemoryCache(): LocalCache {
     deleteWeight: async (date) => void weights.delete(date),
     getExercisesByDate: async (date) => [...exercises.values()].filter((e) => e.date === date).sort((a, b) => a.id.localeCompare(b.id)),
     getAllExercises: async () => [...exercises.values()].sort(byDateThenId),
+    getExercisesInRange: async (from, to) => [...exercises.values()].filter((e) => e.date >= from && e.date <= to).sort(byDateThenId),
     putExercise: async (entry) => void exercises.set(entry.id, entry),
     deleteExercise: async (id) => void exercises.delete(id),
     getSettings: async () => settings,
@@ -220,6 +230,10 @@ export function createMemoryCache(): LocalCache {
     },
     replaceAllExercises: async (next) => {
       exercises.clear();
+      for (const entry of next) exercises.set(entry.id, entry);
+    },
+    replaceExercisesInRange: async (from, to, next) => {
+      for (const entry of exercises.values()) if (entry.date >= from && entry.date <= to) exercises.delete(entry.id);
       for (const entry of next) exercises.set(entry.id, entry);
     },
     replaceExercisesByDate: async (date, next) => {

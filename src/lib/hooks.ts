@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { DATA_CHANGED_EVENT, getDailyTotals, getExercisesByDate, getScansByDate, getScansInRange, getSettings, getWeights } from "./db";
+import { DATA_CHANGED_EVENT, getDailyTotals, getExercisesByDate, getExercisesInRange, getScansByDate, getScansInRange, getSettings, getWeights } from "./db";
 import { addDays, dateKey, parseDateKey } from "./nutrition";
 import { frequentFoods, type FrequentFood } from "./recents";
 import type { DailyTotals } from "./stats";
@@ -44,6 +44,11 @@ export function useScansByDate(date: string | undefined): Scan[] | undefined {
 
 export function useExercisesByDate(date: string | undefined): ExerciseEntry[] | undefined {
   const query = useCallback(() => (date ? getExercisesByDate(date) : Promise.resolve([])), [date]);
+  return useDbQuery(query);
+}
+
+export function useExercisesInRange(from: string, to: string): ExerciseEntry[] | undefined {
+  const query = useCallback(() => getExercisesInRange(from, to), [from, to]);
   return useDbQuery(query);
 }
 

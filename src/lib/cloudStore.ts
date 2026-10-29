@@ -64,6 +64,10 @@ export function createSupabaseStore(client: SupabaseClient): DataStore {
       const rows = check(await exercises().select("id,date,exercise_id,minutes,kcal").order("date").order("id"));
       return (rows as ExerciseRow[]).map(rowToExercise);
     },
+    getExercisesInRange: async (from, to) => {
+      const rows = check(await exercises().select("id,date,exercise_id,minutes,kcal").gte("date", from).lte("date", to).order("date").order("id"));
+      return (rows as ExerciseRow[]).map(rowToExercise);
+    },
     putExercise: async (entry) => void check(await exercises().upsert(exerciseToRow(entry), { onConflict: "user_id,id" })),
     deleteExercise: async (id) => void check(await exercises().delete().eq("id", id)),
     getSettings: async () => rowToSettings(check(await settings().select("data").maybeSingle()) as SettingsRow | null),
