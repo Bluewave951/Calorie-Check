@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCachedStore, createMemoryCache, SaveError, type DataStore } from "./store";
+import { createCachedStore, createCachePeek, createLazyStore, createMemoryCache, SaveError, type DataStore } from "./store";
 import { DEFAULT_SETTINGS, type Scan } from "./types";
 
 function scan(id: string, date: string, createdAt = 1, thumbnail: string | null = "data:image/jpeg;base64,AA"): Scan {
@@ -178,5 +178,84 @@ describe("createCachedStore: การออกกำลังกายตาม
     expect((await t.store.getExercisesInRange("2026-10-01", "2026-10-31")).map((x) => x.id)).toEqual(["b", "c"]);
     t.goOffline();
     expect((await t.store.getExercisesInRange("2026-10-01", "2026-10-31")).map((x) => x.id)).toEqual(["b", "c"]);
+  });
+});
+
+describe("createMemoryCache: การตั้งค่าที่เก็บไว้จริง", () => {
+  it("ยังไม่เคยบันทึก → undefined / บันทึกหรือนำเข้าแล้วได้ค่า / ล้างแล้ว → undefined", async () => {
+    const cache = createMemoryCache();
+    expect(await cache.getStoredSettings()).toBeUndefined();
+    await cache.saveSettings({ ...DEFAULT_SETTINGS, dailyGoal: 1600 });
+    expect((await cache.getStoredSettings())?.dailyGoal).toBe(1600);
+    await cache.clear();
+    expect(await cache.getStoredSettings()).toBeUndefined();
+    await cache.importData([], { ...DEFAULT_SETTINGS, dailyGoal: 1700 }, []);
+    expect((await cache.getStoredSettings())?.dailyGoal).toBe(1700);
+  });
+});
+
+describe("createCachePeek: อ่านสำเนาในเครื่องไว้แสดงก่อนระหว่างรอ cloud", () => {
+  it("ไม่มีข้อมูลในสำเนา → undefined (ไม่แสดงว่า 'ว่าง' หลอก ๆ)", async () => {
+    const peek = createCachePeek(createMemoryCache());
+    expect(await peek.settings()).toBeUndefined();
+    expect(await peek.scansByDate("2026-10-29")).toBeUndefined();
+    expect(await peek.scansInRange("2026-10-01", "2026-10-31")).toBeUndefined();
+    expect(await peek.weights()).toBeUndefined();
+    expect(await peek.exercisesByDate("2026-10-29")).toBeUndefined();
+    expect(await peek.exercisesInRange("2026-10-01", "2026-10-31")).toBeUndefined();
+  });
+
+  it("มีข้อมูลในสำเนา → คืนข้อมูลนั้น", async () => {
+    const cache = createMemoryCache();
+    const peek = createCachePeek(cache);
+    const entry = { id: "e1", date: "2026-10-29", exerciseId: "walk", minutes: 30, kcal: 158 };
+    await cache.saveSettings({ ...DEFAULT_SETTINGS, dailyGoal: 1600 });
+    await cache.putScan(scan("a", "2026-10-29"));
+    await cache.putWeight({ date: "2026-10-29", weightKg: 60 });
+    await cache.putExercise(entry);
+
+    expect((await peek.settings())?.dailyGoal).toBe(1600);
+    expect((await peek.scansByDate("2026-10-29"))?.map((s) => s.id)).toEqual(["a"]);
+    expect((await peek.scansInRange("2026-10-01", "2026-10-31"))?.map((s) => s.id)).toEqual(["a"]);
+    expect(await peek.weights()).toEqual([{ date: "2026-10-29", weightKg: 60 }]);
+    expect(await peek.exercisesByDate("2026-10-29")).toEqual([entry]);
+    expect(await peek.exercisesInRange("2026-10-01", "2026-10-31")).toEqual([entry]);
+  });
+});
+
+describe("createLazyStore: โหลดโค้ด cloud ทีหลัง ไม่ให้หน้าจอรอ", () => {
+  it("ยังไม่ใช้ข้อมูล → ยังไม่โหลด / ใช้หลายครั้ง → โหลดครั้งเดียว", async () => {
+    const remote = createMemoryCache();
+    await remote.putScan(scan("a", "2026-10-29"));
+    let loads = 0;
+    const store = createLazyStore(async () => {
+      loads++;
+      return remote;
+    }, createMemoryCache());
+
+    expect(loads).toBe(0);
+    expect((await store.getScansByDate("2026-10-29")).map((s) => s.id)).toEqual(["a"]);
+    await store.putScan(scan("b", "2026-10-29"));
+    expect(loads).toBe(1);
+    expect((await remote.getScansByDate("2026-10-29")).map((s) => s.id)).toEqual(["a", "b"]);
+  });
+
+  it("โหลดไม่ได้ (เน็ตหลุด) → อ่านจากสำเนาในเครื่อง / บันทึกไม่ได้ (offline) / ครั้งถัดไปลองโหลดใหม่", async () => {
+    const cache = createMemoryCache();
+    await cache.putScan(scan("local", "2026-10-29"));
+    const remote = createMemoryCache();
+    let fail = true;
+    const store = createLazyStore(async () => {
+      if (fail) throw new TypeError("Failed to fetch dynamically imported module");
+      return remote;
+    }, cache);
+
+    expect((await store.getScansByDate("2026-10-29")).map((s) => s.id)).toEqual(["local"]);
+    const error = await store.putScan(scan("b", "2026-10-29")).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SaveError);
+    expect((error as SaveError).offline).toBe(true);
+
+    fail = false;
+    expect(await store.getScansByDate("2026-10-29")).toEqual([]);
   });
 });

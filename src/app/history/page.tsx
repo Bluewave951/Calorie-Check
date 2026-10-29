@@ -8,7 +8,8 @@ import { WeekStrip } from "@/components/WeekStrip";
 import { YearView } from "@/components/YearView";
 import { formatKcal, formatThaiDate } from "@/lib/format";
 import { useNow, useScansInRange, useSettings } from "@/lib/hooks";
-import { addDays, dateKey, parseDateKey, sumItems } from "@/lib/nutrition";
+import { addDays, dateKey, parseDateKey } from "@/lib/nutrition";
+import { dailyTotals } from "@/lib/stats";
 
 type Period = "day" | "month" | "year";
 
@@ -17,6 +18,10 @@ const PERIODS: { id: Period; label: string }[] = [
   { id: "month", label: "เดือน" },
   { id: "year", label: "ปี" },
 ];
+
+function Loading() {
+  return <div className="h-96 animate-pulse rounded-2xl bg-surface-2" aria-busy aria-label="กำลังโหลด" />;
+}
 
 function DayView({
   selected,
@@ -29,38 +34,46 @@ function DayView({
   selected: string;
   endDate: string;
   today: string;
-  goal: number;
+  /** undefined = ยังโหลดการตั้งค่าไม่เสร็จ */
+  goal: number | undefined;
   onSelect: (date: string) => void;
   onShift: (weeks: number) => void;
 }) {
   const startDate = dateKey(addDays(parseDateKey(endDate), -6));
   const scans = useScansInRange(startDate, endDate);
-
-  if (!scans) return <div className="h-96 animate-pulse rounded-2xl bg-surface-2" aria-busy aria-label="กำลังโหลด" />;
-
-  const totals: Record<string, number> = {};
-  for (const scan of scans) totals[scan.date] = (totals[scan.date] ?? 0) + sumItems(scan.items);
-  const dayScans = scans.filter((scan) => scan.date === selected);
+  const loaded = scans !== undefined && goal !== undefined;
+  const totals = scans ? dailyTotals(scans) : {};
   const dayTotal = totals[selected] ?? 0;
-  const over = dayTotal > goal;
+  const over = goal !== undefined && dayTotal > goal;
 
+  // หัวข้อวันที่และส่วนออกกำลังกายแสดง/เริ่มโหลดทันที ไม่ต้องรอรายการอาหาร
   return (
     <>
-      <WeekStrip endDate={endDate} selected={selected} today={today} totals={totals} goal={goal} onSelect={onSelect} onShift={onShift} />
+      {loaded ? (
+        <WeekStrip endDate={endDate} selected={selected} today={today} totals={totals} goal={goal} onSelect={onSelect} onShift={onShift} />
+      ) : (
+        <div className="h-[200px] animate-pulse rounded-2xl bg-surface-2" aria-busy aria-label="กำลังโหลด" />
+      )}
 
       <section className="flex items-end justify-between px-1" aria-live="polite">
         <div>
           <h2 className="font-heading text-lg font-semibold">{formatThaiDate(parseDateKey(selected))}</h2>
-          <p className={`text-sm ${over ? "text-over-text" : "text-muted"}`}>
-            {over ? `เกินเป้า ${formatKcal(dayTotal - goal)} kcal` : `ต่ำกว่าเป้า ${formatKcal(goal - dayTotal)} kcal`}
-          </p>
+          {loaded ? (
+            <p className={`text-sm ${over ? "text-over-text" : "text-muted"}`}>
+              {over ? `เกินเป้า ${formatKcal(dayTotal - goal)} kcal` : `ต่ำกว่าเป้า ${formatKcal(goal - dayTotal)} kcal`}
+            </p>
+          ) : (
+            <p className="mt-1 h-4 w-28 animate-pulse rounded bg-surface-2" />
+          )}
         </div>
-        <p className="font-heading text-2xl font-bold tabular-nums">
-          {formatKcal(dayTotal)} <span className="text-sm font-normal text-muted">kcal</span>
-        </p>
+        {loaded && (
+          <p className="font-heading text-2xl font-bold tabular-nums">
+            {formatKcal(dayTotal)} <span className="text-sm font-normal text-muted">kcal</span>
+          </p>
+        )}
       </section>
 
-      <DayList date={selected} scans={dayScans} />
+      {loaded ? <DayList date={selected} scans={scans.filter((scan) => scan.date === selected)} /> : <Loading />}
 
       <ExerciseHistory
         range={{ kind: "week", selected, dates: Array.from({ length: 7 }, (_, i) => dateKey(addDays(parseDateKey(startDate), i))) }}
@@ -80,8 +93,8 @@ function History({ today }: { today: string }) {
     return { year: d.getFullYear(), month: d.getMonth() };
   });
 
-  if (!settings) return <div className="h-96 animate-pulse rounded-2xl bg-surface-2" aria-busy aria-label="กำลังโหลด" />;
-
+  // ไม่รอการตั้งค่าก่อน → ข้อมูลแต่ละส่วนโหลดพร้อมกัน
+  const goal = settings?.dailyGoal;
   const clamp = (key: string) => (key > today ? today : key);
 
   const shiftWeek = (weeks: number) => {
@@ -131,26 +144,34 @@ function History({ today }: { today: string }) {
       </div>
 
       {period === "day" && (
-        <DayView selected={selected} endDate={endDate} today={today} goal={settings.dailyGoal} onSelect={setSelected} onShift={shiftWeek} />
+        <DayView selected={selected} endDate={endDate} today={today} goal={goal} onSelect={setSelected} onShift={shiftWeek} />
       )}
       {period === "month" && (
         <>
-          <MonthView year={cursor.year} month={cursor.month} today={today} goal={settings.dailyGoal} onShift={shiftMonth} onPickDay={openDay} />
+          {goal === undefined ? (
+            <Loading />
+          ) : (
+            <MonthView year={cursor.year} month={cursor.month} today={today} goal={goal} onShift={shiftMonth} onPickDay={openDay} />
+          )}
           <ExerciseHistory range={{ kind: "month", year: cursor.year, month: cursor.month }} />
         </>
       )}
       {period === "year" && (
         <>
-          <YearView
-            year={cursor.year}
-            today={today}
-            goal={settings.dailyGoal}
-            onShift={(years) => setCursor(({ year, month }) => ({ year: year + years, month }))}
-            onPickMonth={(month) => {
-              setCursor(({ year }) => ({ year, month }));
-              setPeriod("month");
-            }}
-          />
+          {goal === undefined ? (
+            <Loading />
+          ) : (
+            <YearView
+              year={cursor.year}
+              today={today}
+              goal={goal}
+              onShift={(years) => setCursor(({ year, month }) => ({ year: year + years, month }))}
+              onPickMonth={(month) => {
+                setCursor(({ year }) => ({ year, month }));
+                setPeriod("month");
+              }}
+            />
+          )}
           <ExerciseHistory range={{ kind: "year", year: cursor.year }} />
         </>
       )}
@@ -160,6 +181,6 @@ function History({ today }: { today: string }) {
 
 export default function HistoryPage() {
   const now = useNow();
-  if (!now) return <div className="h-96 animate-pulse rounded-2xl bg-surface-2" aria-busy aria-label="กำลังโหลด" />;
+  if (!now) return <Loading />;
   return <History today={dateKey(now)} />;
 }

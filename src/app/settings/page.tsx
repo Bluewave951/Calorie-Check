@@ -8,7 +8,7 @@ import { ReminderSection } from "@/components/ReminderSection";
 import { TdeeCalculator } from "@/components/TdeeCalculator";
 import { ThemeSection } from "@/components/ThemeSection";
 import { saveSettings } from "@/lib/db";
-import { CLOUD_ENABLED } from "@/lib/supabase/client";
+import { CLOUD_ENABLED } from "@/lib/supabase/config";
 import { useSettings } from "@/lib/hooks";
 import { formatKcal } from "@/lib/format";
 import { goalWarnings, SAFE_MIN_GOAL, type GoalWarning } from "@/lib/tdee";

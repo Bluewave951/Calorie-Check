@@ -56,6 +56,14 @@ describe("createIdbCache", () => {
     expect((await cache.getSettings()).dailyGoal).toBe(1600);
   });
 
+  it("การตั้งค่าที่เก็บไว้จริง: ยังไม่เคยบันทึก → undefined / ล้างแล้ว → undefined", async () => {
+    expect(await cache.getStoredSettings()).toBeUndefined();
+    await cache.saveSettings({ ...DEFAULT_SETTINGS, dailyGoal: 1600 });
+    expect((await cache.getStoredSettings())?.dailyGoal).toBe(1600);
+    await cache.clear();
+    expect(await cache.getStoredSettings()).toBeUndefined();
+  });
+
   it("นำเข้า: รวมกับของเดิม และแทนการตั้งค่า", async () => {
     await cache.putScan(scan("a", "2026-10-27", 1));
     await cache.importData([scan("b", "2026-10-27", 2)], { ...DEFAULT_SETTINGS, dailyGoal: 1900 }, [{ date: "2026-10-27", weightKg: 60 }]);

@@ -7,10 +7,13 @@ import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 // ฟอนต์ตามต้นแบบ templates/calorie-check
+// preload เฉพาะฟอนต์เนื้อหา (subsets = ชุดที่ preload เท่านั้น ตัวอักษรชุดอื่นยังโหลดได้ตามปกติ)
+// ภาษาอังกฤษ/ตัวเลขใช้ Figtree ก่อนเสมอ → Anuphan preload แค่ภาษาไทย
+// ฟอนต์หัวข้อไม่ preload ไม่ให้แย่งเน็ตกับ JS ตอนเปิดหน้า (แสดงฟอนต์สำรองก่อนแล้วสลับเมื่อโหลดเสร็จ)
 const figtree = Figtree({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--font-figtree" });
-const anuphan = Anuphan({ subsets: ["thai", "latin"], weight: ["400", "600", "700"], variable: "--font-anuphan" });
-const caprasimo = Caprasimo({ subsets: ["latin"], weight: "400", variable: "--font-caprasimo" });
-const mitr = Mitr({ subsets: ["thai", "latin"], weight: ["400", "500"], variable: "--font-mitr" });
+const anuphan = Anuphan({ subsets: ["thai"], weight: ["400", "600", "700"], variable: "--font-anuphan" });
+const caprasimo = Caprasimo({ subsets: ["latin"], weight: "400", variable: "--font-caprasimo", preload: false });
+const mitr = Mitr({ subsets: ["thai"], weight: ["400", "500"], variable: "--font-mitr", preload: false });
 
 export const metadata: Metadata = {
   title: "Calorie&Check",

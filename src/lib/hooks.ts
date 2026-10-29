@@ -1,75 +1,99 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { DATA_CHANGED_EVENT, getDailyTotals, getExercisesByDate, getExercisesInRange, getScansByDate, getScansInRange, getSettings, getWeights } from "./db";
+import { useEffect, useState } from "react";
+import { cachePeek, DATA_CHANGED_EVENT, getDailyTotals, getExercisesByDate, getExercisesInRange, getScansByDate, getScansInRange, getSettings, getWeights, queryCache } from "./db";
 import { addDays, dateKey, parseDateKey } from "./nutrition";
 import { frequentFoods, type FrequentFood } from "./recents";
-import type { DailyTotals } from "./stats";
+import { dailyTotals, type DailyTotals } from "./stats";
 import type { ExerciseEntry, Scan, Settings, WeightEntry } from "./types";
 
-/** โหลดข้อมูล (cloud หรือในเครื่อง) และโหลดใหม่เมื่อมีการบันทึก/ลบ */
-function useDbQuery<T>(query: () => Promise<T>): T | undefined {
-  const [data, setData] = useState<T>();
+/**
+ * โหลดข้อมูล (cloud หรือในเครื่อง) และโหลดใหม่เมื่อมีการบันทึก/ลบ
+ * - เคยโหลด key นี้แล้ว → แสดงค่าเดิมทันที แล้วโหลดใหม่เบื้องหลัง
+ * - ยังไม่เคย → แสดงสำเนาในเครื่อง (local) ก่อนถ้ามี
+ * - query/local ต้องคืนข้อมูลของ key เดียวกันเสมอ (ไม่ต้องห่อ useCallback)
+ */
+function useDbQuery<T>(key: string, query: () => Promise<T>, local?: () => Promise<T | undefined>): T | undefined {
+  const [state, setState] = useState<{ key: string; data: T | undefined }>(() => ({ key, data: queryCache.peek<T>(key) }));
 
   useEffect(() => {
-    let active = true;
+    let cancel = () => {};
     const load = () => {
-      query().then((result) => {
-        if (active) setData(result);
-      });
+      cancel();
+      cancel = queryCache.load({ key, remote: query, local }, (data) => setState({ key, data }));
     };
     load();
     window.addEventListener(DATA_CHANGED_EVENT, load);
     return () => {
-      active = false;
+      cancel();
       window.removeEventListener(DATA_CHANGED_EVENT, load);
     };
-  }, [query]);
+    // query/local ผูกกับ key อยู่แล้ว
+  }, [key]);
 
-  return data;
+  if (state.key === key) return state.data;
+  // เปลี่ยน key (เช่น เลื่อนสัปดาห์): ใช้ค่าที่จำไว้ของ key ใหม่ถ้ามี ไม่งั้นแสดงค่าเดิมไปก่อน
+  return queryCache.peek<T>(key) ?? state.data;
 }
 
 export function useSettings(): Settings | undefined {
-  return useDbQuery(getSettings);
+  return useDbQuery("settings", getSettings, () => cachePeek()?.settings() ?? Promise.resolve(undefined));
 }
 
 export function useWeights(): WeightEntry[] | undefined {
-  return useDbQuery(getWeights);
+  return useDbQuery("weights", getWeights, () => cachePeek()?.weights() ?? Promise.resolve(undefined));
 }
 
 export function useScansByDate(date: string | undefined): Scan[] | undefined {
-  const query = useCallback(() => (date ? getScansByDate(date) : Promise.resolve([])), [date]);
-  return useDbQuery(query);
+  return useDbQuery(
+    `scans:${date ?? ""}`,
+    () => (date ? getScansByDate(date) : Promise.resolve([])),
+    () => (date ? (cachePeek()?.scansByDate(date) ?? Promise.resolve(undefined)) : Promise.resolve([])),
+  );
 }
 
 export function useExercisesByDate(date: string | undefined): ExerciseEntry[] | undefined {
-  const query = useCallback(() => (date ? getExercisesByDate(date) : Promise.resolve([])), [date]);
-  return useDbQuery(query);
+  return useDbQuery(
+    `exercises:${date ?? ""}`,
+    () => (date ? getExercisesByDate(date) : Promise.resolve([])),
+    () => (date ? (cachePeek()?.exercisesByDate(date) ?? Promise.resolve(undefined)) : Promise.resolve([])),
+  );
 }
 
 export function useExercisesInRange(from: string, to: string): ExerciseEntry[] | undefined {
-  const query = useCallback(() => getExercisesInRange(from, to), [from, to]);
-  return useDbQuery(query);
+  return useDbQuery(
+    `exercises:${from}:${to}`,
+    () => getExercisesInRange(from, to),
+    () => cachePeek()?.exercisesInRange(from, to) ?? Promise.resolve(undefined),
+  );
 }
 
 export function useScansInRange(from: string, to: string): Scan[] | undefined {
-  const query = useCallback(() => getScansInRange(from, to), [from, to]);
-  return useDbQuery(query);
+  return useDbQuery(
+    `scans:${from}:${to}`,
+    () => getScansInRange(from, to),
+    () => cachePeek()?.scansInRange(from, to) ?? Promise.resolve(undefined),
+  );
 }
 
 /** เมนูที่กินบ่อยใน 30 วันล่าสุด */
 export function useFrequentFoods(today: string | undefined): FrequentFood[] | undefined {
-  const query = useCallback(async () => {
+  return useDbQuery(`frequent:${today ?? ""}`, async () => {
     if (!today) return [];
     const from = dateKey(addDays(parseDateKey(today), -30));
     return frequentFoods(await getScansInRange(from, today, { thumbnails: false }));
-  }, [today]);
-  return useDbQuery(query);
+  });
 }
 
 export function useDailyTotals(from: string, to: string): DailyTotals | undefined {
-  const query = useCallback(() => getDailyTotals(from, to), [from, to]);
-  return useDbQuery(query);
+  return useDbQuery(
+    `totals:${from}:${to}`,
+    () => getDailyTotals(from, to),
+    async () => {
+      const scans = await cachePeek()?.scansInRange(from, to);
+      return scans && dailyTotals(scans);
+    },
+  );
 }
 
 /** วันนี้ (YYYY-MM-DD) ฝั่ง client เท่านั้น เพื่อไม่ให้ hydration ไม่ตรงกัน */
